@@ -98,6 +98,47 @@ function updateBugAI(entity) {
   }
 }
 
+function renderRadar() {
+  const screen = $('#radarScreen');
+  if (!screen) return;
+
+  const range = 620;
+  const radius = 48;
+  const blips = game.entities
+    .map(entity => {
+      const dx = entity.wx - game.player.x;
+      const dy = entity.wy - game.player.y;
+      return { entity, dx, dy, distance: Math.hypot(dx, dy) };
+    })
+    .filter(item => item.distance <= range)
+    .sort((a, b) => a.distance - b.distance);
+
+  screen.querySelectorAll('.radar-blip').forEach(node => node.remove());
+
+  blips.slice(0, 14).forEach(item => {
+    const node = document.createElement('div');
+    const threatClass = item.entity.signal ? ' signal' : '';
+    node.className = `radar-blip${threatClass}`;
+    node.style.setProperty('--c', item.entity.grade.color);
+    node.style.left = `${50 + (item.dx / range) * radius}%`;
+    node.style.top = `${50 + (item.dy / range) * radius}%`;
+    node.title = `${item.entity.grade.name} ${item.entity.bug.name}`;
+    screen.appendChild(node);
+  });
+
+  $('#radarCount').textContent = blips.length;
+  if (blips.length) {
+    const near = blips[0];
+    const step = Math.max(1, Math.round(near.distance / 45));
+    const direction = Math.abs(near.dx) > Math.abs(near.dy)
+      ? (near.dx > 0 ? '오른쪽' : '왼쪽')
+      : (near.dy > 0 ? '아래쪽' : '위쪽');
+    $('#radarHint').textContent = `${direction} ${step}걸음 · ${near.entity.signal ? '생태 신호' : near.entity.bug.name}`;
+  } else {
+    $('#radarHint').textContent = '주변 신호 없음';
+  }
+}
+
 function renderWorld() {
   $('#map').style.transform = `translate(${-game.player.x % 260}px,${-game.player.y % 260}px) scale(1.2)`;
   $('#pt').textContent = game.points;
@@ -121,6 +162,7 @@ function renderWorld() {
     node.onclick = () => d > 92 ? toast('더 가까이 가야 해') : openCatch(index);
     box.appendChild(node);
   });
+  renderRadar();
 }
 
 function movePlayer(forward, side) {
