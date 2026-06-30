@@ -16,6 +16,7 @@ const game = {
   caught:{},
   activeCatch:null,
   catchStart:0,
+  catchBusy:false,
   seq:0,
   regionId:'forest',
   input:{ dragging:false, lx:0, ly:0, vx:0, vy:0 },
@@ -92,6 +93,7 @@ function startGame(){
   $('#title').style.display='none';
   $('#game').style.display='block';
   ensureCompassUI();
+  injectCatchStyles();
   while(game.entities.length<8) spawnNearPlayer();
   toast('호박사: 이동은 그대로, 회전은 나침반으로만 바뀐다.');
 }
@@ -229,12 +231,21 @@ function openCatch(index){
   e.signal=false;
   game.activeCatch=index;
   game.catchStart=performance.now();
+  game.catchBusy=false;
+  resetCatchFx();
   $('#target').style.setProperty('--c',e.grade.color);
   $('#target').innerHTML=bugImage(e.bug);
   $('#name').textContent=`${e.grade.name} ${e.bug.name}`;
+  $('#judge').textContent='타이밍!';
+  $('#catch').disabled=false;
   $('#enc').style.display='block';
 }
-function closeCatch(){ game.activeCatch=null; $('#enc').style.display='none'; }
+function closeCatch(){
+  game.activeCatch=null;
+  game.catchBusy=false;
+  resetCatchFx();
+  $('#enc').style.display='none';
+}
 function cursorPos(){ return (.5+.5*Math.sin((performance.now()-game.catchStart)*.001*Math.PI*2))*100; }
 function judge(p){
   const d=Math.abs(p-50);
@@ -255,20 +266,70 @@ function recordCatch(e,result,gain){
   game.caught[key]=rec;
 }
 function judgeRank(name){ return {MISS:0,GOOD:1,GREAT:2,PERFECT:3}[name]||0; }
-function tryCatch(){
-  if(game.activeCatch===null) return;
-  const e=game.entities[game.activeCatch];
-  const result=judge(cursorPos());
-  const rate=Math.max(.1,Math.min(.95,e.grade.rate+(result[1] ? .08 : -.1)));
-  if(Math.random()<rate && result[1]>0){
+function playCatchSound(type){ return type; }
+function vibrate(pattern){ if(navigator.vibrate) navigator.vibrate(pattern); }
+function resetCatchFx(){
+  const enc=$('#enc');
+  if(!enc) return;
+  enc.classList.remove('catch-swing','catch-success','catch-miss','catch-perfect','catch-great','catch-good');
+  const fx=enc.querySelector('.catchFx');
+  if(fx) fx.remove();
+}
+function spawnCatchFx(kind, text){
+  const stage=document.querySelector('#enc .stage');
+  if(!stage) return;
+  const fx=document.createElement('div');
+  fx.className=`catchFx ${kind}`;
+  const icons=kind==='success' ? ['✨','⭐','✦','💫','✨','⭐'] : ['💨','〰️','💨','·','〰️'];
+  fx.innerHTML=`<b>${text}</b>${icons.map((icon,i)=>`<span style="--i:${i}">${icon}</span>`).join('')}`;
+  stage.appendChild(fx);
+  setTimeout(()=>fx.remove(),900);
+}
+function reactTarget(success, resultName){
+  const enc=$('#enc');
+  enc.classList.add(success?'catch-success':'catch-miss');
+  if(resultName==='PERFECT') enc.classList.add('catch-perfect');
+  if(resultName==='GREAT') enc.classList.add('catch-great');
+  if(resultName==='GOOD') enc.classList.add('catch-good');
+}
+function finishCatch(e,result,rate){
+  const success=Math.random()<rate && result[1]>0;
+  reactTarget(success,result[0]);
+  if(success){
     const gain=Math.round(e.grade.pts*result[2]);
     game.points+=gain;
     recordCatch(e,result,gain);
     game.lastEvent=`${e.grade.name} ${e.bug.name}를 만났다. 호박사: “오, 그건 나도 좀 보고 싶은데?”`;
     game.entities.splice(game.activeCatch,1);
-    toast(`${result[0]}! 연구별 +${gain}`);
-    closeCatch();
-  }else toast('놓쳤다. 그래도 흔적은 남았다.');
+    $('#pt').textContent=game.points;
+    $('#judge').textContent=`${result[0]}! +${gain}`;
+    spawnCatchFx('success',`${result[0]}!`);
+    vibrate(result[0]==='PERFECT'?[18,30,18]:[24]);
+    playCatchSound('success');
+    setTimeout(()=>{ toast(`${result[0]}! 연구별 +${gain}`); closeCatch(); },720);
+  }else{
+    $('#judge').textContent='MISS! 놓쳤다';
+    spawnCatchFx('miss','놓쳤다!');
+    vibrate([70,40,70]);
+    playCatchSound('miss');
+    e.signal=true;
+    e.drift+=Math.PI*.35;
+    setTimeout(()=>{ game.catchBusy=false; $('#catch').disabled=false; toast('놓쳤다. 그래도 흔적은 남았다.'); resetCatchFx(); },780);
+  }
+}
+function tryCatch(){
+  if(game.activeCatch===null || game.catchBusy) return;
+  const e=game.entities[game.activeCatch];
+  if(!e) return;
+  game.catchBusy=true;
+  $('#catch').disabled=true;
+  const result=judge(cursorPos());
+  const rate=Math.max(.1,Math.min(.95,e.grade.rate+(result[1] ? .08 : -.1)));
+  $('#enc').classList.add('catch-swing');
+  $('#judge').textContent='채집망 휘두르는 중!';
+  playCatchSound('swing');
+  vibrate(12);
+  setTimeout(()=>finishCatch(e,result,rate),330);
 }
 function openModal(html){ $('#modalBody').innerHTML=html; $('#modal').style.display='block'; }
 function caughtRecord(bug){
@@ -305,7 +366,7 @@ function tick(){
   applyKeyboardMovement();
   if(Math.abs(input.vx)+Math.abs(input.vy)>.001) movePlayer(input.vy*8,input.vx*8);
   renderWorld();
-  if(game.activeCatch!==null){
+  if(game.activeCatch!==null && !game.catchBusy){
     const p=cursorPos(), result=judge(p);
     $('#cur').style.left=`calc(${p}% - 3px)`;
     $('#judge').textContent=result[0];
@@ -324,6 +385,33 @@ function ensureCompassUI(){
     game.compass.heading=Number(e.target.value)||0;
   });
   $('#compassBtn').onclick=enableDeviceCompass;
+}
+function injectCatchStyles(){
+  if($('#catchActionStyles')) return;
+  const style=document.createElement('style');
+  style.id='catchActionStyles';
+  style.textContent=`
+    #enc .net{transform-origin:78% 82%;transition:filter .2s}
+    #enc.catch-swing .net{animation:netSwing .42s cubic-bezier(.2,1.3,.3,1) both;filter:drop-shadow(0 0 18px #fff)}
+    #enc.catch-success .panel{animation:panelBump .42s ease both}
+    #enc.catch-success .target{animation:targetCaught .55s ease both;box-shadow:0 0 28px var(--c,#ffd166),0 0 60px #fff8}
+    #enc.catch-miss .target{animation:targetEscape .62s ease both}
+    #enc.catch-perfect .stage:after{content:'';position:absolute;inset:0;background:radial-gradient(circle,#ffffff99,transparent 42%);animation:flashOut .5s ease both;pointer-events:none}
+    #catch:disabled{opacity:.55;filter:grayscale(.35)}
+    .catchFx{position:absolute;inset:0;pointer-events:none;z-index:5;display:flex;align-items:center;justify-content:center;font-weight:1000;color:white;text-shadow:0 5px 15px #000}
+    .catchFx b{position:absolute;top:20px;left:50%;transform:translateX(-50%);font-size:28px;letter-spacing:.04em;white-space:nowrap;animation:fxTitle .75s ease both}
+    .catchFx span{position:absolute;left:50%;top:48%;font-size:24px;animation:fxParticle .78s ease both;animation-delay:calc(var(--i)*.035s)}
+    .catchFx.success span:nth-child(2){--x:-86px;--y:-52px}.catchFx.success span:nth-child(3){--x:72px;--y:-72px}.catchFx.success span:nth-child(4){--x:-42px;--y:54px}.catchFx.success span:nth-child(5){--x:94px;--y:36px}.catchFx.success span:nth-child(6){--x:-104px;--y:18px}.catchFx.success span:nth-child(7){--x:24px;--y:-96px}
+    .catchFx.miss span{--x:84px;--y:-18px;opacity:.8}
+    @keyframes netSwing{0%{transform:rotate(0) translate(0,0) scale(1)}45%{transform:rotate(-58deg) translate(-54px,-60px) scale(1.04)}100%{transform:rotate(-20deg) translate(-22px,-22px) scale(1)}}
+    @keyframes panelBump{0%{transform:translateX(-50%) scale(1)}35%{transform:translateX(-50%) scale(1.035)}100%{transform:translateX(-50%) scale(1)}}
+    @keyframes targetCaught{0%{transform:translate(-50%,-50%) scale(1)}55%{transform:translate(-50%,-50%) scale(1.18) rotate(-5deg)}100%{transform:translate(-50%,-50%) scale(.08) rotate(18deg);opacity:0}}
+    @keyframes targetEscape{0%{transform:translate(-50%,-50%) scale(1);opacity:1}100%{transform:translate(-50%,-125%) scale(.72) rotate(18deg);opacity:0}}
+    @keyframes flashOut{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
+    @keyframes fxTitle{0%{opacity:0;transform:translate(-50%,12px) scale(.9)}35%{opacity:1;transform:translate(-50%,0) scale(1.08)}100%{opacity:0;transform:translate(-50%,-18px) scale(1)}}
+    @keyframes fxParticle{0%{transform:translate(-50%,-50%) scale(.4);opacity:0}30%{opacity:1}100%{transform:translate(calc(-50% + var(--x,70px)),calc(-50% + var(--y,-50px))) scale(1.25);opacity:0}}
+  `;
+  document.head.appendChild(style);
 }
 async function enableDeviceCompass(){
   try{
