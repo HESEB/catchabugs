@@ -18,6 +18,8 @@ const game = {
   seq:0,
   regionId:'forest',
   input:{ dragging:false, lx:0, ly:0, vx:0, vy:0 },
+  keys:{},
+  compass:{ heading:0, smooth:0, source:'DEV', enabled:false },
   lastEvent:'오늘은 아직 특별한 일이 없었다. 호박사: “그런 날도 있는 거지.”'
 };
 
@@ -88,10 +90,20 @@ function spawnNearPlayer(){
 function startGame(){
   $('#title').style.display='none';
   $('#game').style.display='block';
+  ensureCompassUI();
   while(game.entities.length<8) spawnNearPlayer();
-  toast('호박사: 레이더 신호를 따라가 보자.');
+  toast('호박사: 이동은 그대로, 회전은 나침반으로만 바뀐다.');
 }
 function pos(e){ return { x:e.wx-game.player.x, y:e.wy-game.player.y }; }
+function rotateByHeading(x,y){
+  const a=-game.compass.smooth*Math.PI/180;
+  const c=Math.cos(a), s=Math.sin(a);
+  return { x:x*c-y*s, y:x*s+y*c };
+}
+function screenPos(e){
+  const p=pos(e);
+  return rotateByHeading(p.x,p.y);
+}
 function updateAI(e){
   e.drift+=.012;
   const p=pos(e), d=Math.hypot(p.x,p.y), s=e.grade.speed;
@@ -127,10 +139,19 @@ function dir(dx,dy){
   if(dx<0&&dy>0) return '왼쪽 아래';
   return '왼쪽 위';
 }
+function headingLabel(deg){
+  const names=['N','NE','E','SE','S','SW','W','NW'];
+  return `${names[Math.round(((deg%360)+360)%360/45)%8]} ${Math.round(((deg%360)+360)%360)}°`;
+}
+function smoothHeading(){
+  let diff=((game.compass.heading-game.compass.smooth+540)%360)-180;
+  game.compass.smooth=(game.compass.smooth+diff*.12+360)%360;
+}
 function radarItems(){
   return game.entities.map(e=>{
-    const dx=e.wx-game.player.x, dy=e.wy-game.player.y;
-    return { e, dx, dy, d:Math.hypot(dx,dy) };
+    const raw=pos(e);
+    const rotated=rotateByHeading(raw.x,raw.y);
+    return { e, dx:rotated.x, dy:rotated.y, d:Math.hypot(raw.x,raw.y) };
   }).sort((a,b)=>a.d-b.d);
 }
 function renderRadar(){
@@ -165,17 +186,23 @@ function renderRadar(){
   }
 }
 function renderWorld(){
+  smoothHeading();
   const r=currentRegion();
   applyRegion(r);
-  $('#map').style.transform=`translate(${-game.player.x%260}px,${-game.player.y%260}px) scale(1.2)`;
+  $('#map').style.transform=`translate(${-game.player.x%260}px,${-game.player.y%260}px) rotate(${-game.compass.smooth}deg) scale(1.2)`;
   $('#pt').textContent=game.points;
+  const headingNode=$('#headingText');
+  if(headingNode) headingNode.textContent=`🧭 ${headingLabel(game.compass.smooth)} · ${game.compass.source}`;
+  const slider=$('#headingSlider');
+  if(slider && game.compass.source==='DEV') slider.value=Math.round(game.compass.heading);
+
   game.entities=game.entities.filter(e=>Math.hypot(e.wx-game.player.x,e.wy-game.player.y)<900);
   while(game.entities.length<8) spawnNearPlayer();
   const box=$('#bugs');
   box.innerHTML='';
   game.entities.forEach((e,index)=>{
     updateAI(e);
-    const p=pos(e), d=Math.hypot(p.x,p.y), scale=Math.max(.5,1.22-d/620);
+    const raw=pos(e), d=Math.hypot(raw.x,raw.y), p=screenPos(e), scale=Math.max(.5,1.22-d/620);
     const clue=!e.discovered && d<160;
     if(!e.discovered && !clue) return;
     const node=document.createElement('div');
@@ -197,6 +224,14 @@ function renderWorld(){
   renderRadar();
 }
 function movePlayer(forward,side){ game.player.x+=side; game.player.y-=forward; }
+function applyKeyboardMovement(){
+  let forward=0, side=0;
+  if(game.keys.ArrowUp||game.keys.KeyW) forward+=1;
+  if(game.keys.ArrowDown||game.keys.KeyS) forward-=1;
+  if(game.keys.ArrowRight||game.keys.KeyD) side+=1;
+  if(game.keys.ArrowLeft||game.keys.KeyA) side-=1;
+  if(forward||side) movePlayer(forward*5,side*5);
+}
 function openCatch(index){
   const e=game.entities[index];
   if(!e.discovered){ toast('먼저 레이더로 발견해야 해'); return; }
@@ -276,6 +311,7 @@ function openDex(){
 function tick(){
   const input=game.input;
   input.vx*=.86; input.vy*=.86;
+  applyKeyboardMovement();
   if(Math.abs(input.vx)+Math.abs(input.vy)>.001) movePlayer(input.vy*8,input.vx*8);
   renderWorld();
   if(game.activeCatch!==null){
@@ -284,6 +320,38 @@ function tick(){
     $('#judge').textContent=result[0];
   }
   requestAnimationFrame(tick);
+}
+function ensureCompassUI(){
+  if($('#compassPanel')) return;
+  const panel=document.createElement('div');
+  panel.id='compassPanel';
+  panel.style.cssText='position:absolute;left:10px;top:62px;z-index:12;width:170px;padding:9px 10px;border-radius:18px;background:#07111ee8;color:white;border:1px solid #ffffff33;box-shadow:0 14px 30px #0006;font-weight:900;font-size:11px;box-sizing:border-box';
+  panel.innerHTML=`<div id="headingText">🧭 N 0° · DEV</div><input id="headingSlider" type="range" min="0" max="359" value="0" style="width:100%;margin:7px 0 4px"><button id="compassBtn" type="button" style="width:100%;border:0;border-radius:12px;padding:7px;font-weight:1000;background:#9af7ff;color:#07111e">모바일 나침반 켜기</button><div style="opacity:.75;margin-top:5px">키보드/드래그는 이동만</div>`;
+  $('#game').appendChild(panel);
+  $('#headingSlider').addEventListener('input',e=>{
+    game.compass.source='DEV';
+    game.compass.heading=Number(e.target.value)||0;
+  });
+  $('#compassBtn').onclick=enableDeviceCompass;
+}
+async function enableDeviceCompass(){
+  try{
+    if(typeof DeviceOrientationEvent!=='undefined' && typeof DeviceOrientationEvent.requestPermission==='function'){
+      const res=await DeviceOrientationEvent.requestPermission();
+      if(res!=='granted'){ toast('나침반 권한이 거부됐어'); return; }
+    }
+    window.addEventListener('deviceorientation',onDeviceOrientation,true);
+    game.compass.enabled=true;
+    game.compass.source='GPS';
+    toast('모바일 나침반 연결');
+  }catch(err){ toast('나침반 연결 실패. DEV 슬라이더 사용'); }
+}
+function onDeviceOrientation(e){
+  const heading=typeof e.webkitCompassHeading==='number' ? e.webkitCompassHeading : (360-(e.alpha||0));
+  if(Number.isFinite(heading)){
+    game.compass.heading=((heading%360)+360)%360;
+    game.compass.source='GPS';
+  }
 }
 function bind(){
   $('#start').onclick=startGame;
@@ -305,6 +373,8 @@ function bind(){
   });
   field.addEventListener('pointerup',()=>game.input.dragging=false);
   field.addEventListener('pointercancel',()=>game.input.dragging=false);
+  window.addEventListener('keydown',e=>{ game.keys[e.code]=true; });
+  window.addEventListener('keyup',e=>{ game.keys[e.code]=false; });
 }
 bind();
 requestAnimationFrame(tick);
