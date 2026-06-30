@@ -2,6 +2,7 @@
 // AI movement logic lives here so the main radar loop only coordinates rendering and input.
 
 import { runBehavior } from './ai/registry.js';
+import { applyPersonalityContext, pickPersonality } from './ai/personality.js';
 
 export const AI_PERSONALITIES = Object.freeze({
   CALM: 'calm',
@@ -25,7 +26,7 @@ export function createAIState(seed = Math.random()) {
   return {
     seed,
     pattern: AI_PATTERNS.IDLE,
-    personality: AI_PERSONALITIES.CALM,
+    personality: pickPersonality(seed),
     phase: seed * Math.PI * 2,
     timer: 0,
     vx: 0,
@@ -51,6 +52,9 @@ export function ensureAIState(entity) {
   if (!entity.ai) {
     entity.ai = createAIState(Math.random());
   }
+  if (!entity.ai.personality) {
+    entity.ai.personality = pickPersonality(entity.ai.seed || Math.random());
+  }
   if (!entity.ai.pattern || entity.ai.pattern === AI_PATTERNS.IDLE) {
     entity.ai.pattern = getDefaultPattern(entity.bug || entity);
   }
@@ -75,9 +79,11 @@ export function updateInsectAI(entity, context = {}) {
   const player = context.player || { x: 0, y: 0 };
   const toast = typeof context.toast === 'function' ? context.toast : null;
   const random = typeof context.random === 'function' ? context.random : Math.random;
+  const personalityContext = applyPersonalityContext(ai, context);
+  const personality = personalityContext.personality;
 
   entity.drift = Number.isFinite(entity.drift) ? entity.drift : ai.phase;
-  entity.drift += 0.012;
+  entity.drift += 0.012 * (personality.drift || 1);
   ai.timer += context.dt || 1;
 
   const p = playerDelta(entity, player);
@@ -85,17 +91,20 @@ export function updateInsectAI(entity, context = {}) {
   const pattern = resolvePattern(entity, ai);
 
   runBehavior(pattern, entity, ai, {
-    ...context,
+    ...personalityContext,
     player,
     random,
     distanceToPlayer: d,
     deltaToPlayer: p,
   });
 
-  if (d < 80 && entity.mood === 'shy' && random() < 0.012) {
+  const shyFleeRate = 0.012 * (personality.fleeChance || 1);
+  const fleeDistance = 40 * (personality.fleeDistance || 1);
+
+  if (d < 80 && entity.mood === 'shy' && random() < shyFleeRate) {
     const away = Math.atan2(p.y, p.x);
-    entity.wx += Math.cos(away) * 40;
-    entity.wy += Math.sin(away) * 40;
+    entity.wx += Math.cos(away) * fleeDistance;
+    entity.wy += Math.sin(away) * fleeDistance;
     entity.signal = true;
     if (toast) toast('깜짝! 생태 신호가 이동했다.');
   }
