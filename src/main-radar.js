@@ -1,5 +1,6 @@
 import { ASSET_BASE, MAP_ASSET_BASE, BUGS, GRADES } from './data/bugs.js';
 import { updateInsectAI } from './insect-ai.js';
+import { claimQuestReward, recordQuestCatch, renderQuestHTML } from './quest.js';
 
 const $ = (s) => document.querySelector(s);
 const REGIONS = [
@@ -299,6 +300,7 @@ function finishCatch(e,result,rate){
     const gain=Math.round(e.grade.pts*result[2]);
     game.points+=gain;
     recordCatch(e,result,gain);
+    recordQuestCatch({ bug:e.bug, grade:e.grade, judge:result[0], gain });
     game.lastEvent=`${e.grade.name} ${e.bug.name}를 만났다. 호박사: “오, 그건 나도 좀 보고 싶은데?”`;
     game.entities.splice(game.activeCatch,1);
     $('#pt').textContent=game.points;
@@ -359,6 +361,19 @@ function openDex(){
     </article>`;
   }).join('');
   openModal(`<div class="dexHeader"><h2>곤충 앨범</h2><div>${found}/${total} · ${percent}%</div></div><div class="dexProgress"><i style="width:${percent}%"></i></div><div class="dexGrid">${cards}</div>`);
+}
+function openQuest(){
+  openModal(renderQuestHTML());
+  document.querySelectorAll('[data-quest-id]').forEach(btn=>{
+    btn.onclick=()=>{
+      const result=claimQuestReward(btn.dataset.questId, game.points);
+      if(!result.ok) return;
+      game.points=result.points;
+      $('#pt').textContent=game.points;
+      toast(`MISSION CLEAR! +${result.reward} 연구별`);
+      openQuest();
+    };
+  });
 }
 function tick(){
   const input=game.input;
@@ -436,6 +451,7 @@ function bind(){
   $('#start').onclick=startGame;
   $('#openDexTitle').onclick=()=>{ startGame(); openDex(); };
   $('#openDex').onclick=openDex;
+  $('#openQuest').onclick=openQuest;
   $('#diary').onclick=()=>openModal(`<h2>오늘의 탐험일기</h2><p>${game.lastEvent}</p>`);
   $('#home').onclick=()=>toast('호박사: 귀환석은 다음 버전에서 줄게. 지금은 걸어.');
   $('#closeModal').onclick=()=>$('#modal').style.display='none';
