@@ -4,7 +4,7 @@ export const ASSET_PATHS = {
 };
 
 export const ASSET_BASE = ASSET_PATHS.local;
-export const MAP_ASSET_BASE = ASSET_PATHS.fallback;
+export const MAP_ASSET_BASE = ASSET_PATHS.local;
 
 export const BUGS = [
   { id:'ant', name:'개미', file:'ant.png', emoji:'🐜', behavior:'walk', habitat:['city','forest'] },
