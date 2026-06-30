@@ -1,4 +1,5 @@
 import { ASSET_BASE, MAP_ASSET_BASE, BUGS, GRADES } from './data/bugs.js';
+import { updateInsectAI } from './insect-ai.js';
 
 const $ = (s) => document.querySelector(s);
 const REGIONS = [
@@ -105,22 +106,12 @@ function screenPos(e){
   return rotateByHeading(p.x,p.y);
 }
 function updateAI(e){
-  e.drift+=.012;
-  const p=pos(e), d=Math.hypot(p.x,p.y), s=e.grade.speed;
-  if(e.bug.behavior==='flutter'){
-    e.wx+=Math.sin(e.drift*1.8)*.18*s; e.wy+=Math.cos(e.drift*1.1)*.14*s;
-  }else if(e.bug.behavior==='jump'){
-    if(Math.random()<.012){ e.wx+=(Math.random()*2-1)*14; e.wy+=(Math.random()*2-1)*14; }
-  }else if(e.bug.behavior==='dart'){
-    e.wx+=Math.sin(e.drift*2.7)*.25*s; e.wy+=Math.cos(e.drift*2.1)*.2*s;
-  }else{
-    e.wx+=Math.sin(e.drift)*.06*s; e.wy+=Math.cos(e.drift*.7)*.05*s;
-  }
-  if(d<80&&e.mood==='shy'&&Math.random()<.012){
-    const away=Math.atan2(p.y,p.x);
-    e.wx+=Math.cos(away)*40; e.wy+=Math.sin(away)*40; e.signal=true;
-    toast('깜짝! 생태 신호가 이동했다.');
-  }
+  updateInsectAI(e, {
+    player: game.player,
+    toast,
+    random: Math.random,
+    dt: 1
+  });
 }
 function bars(d){
   if(d<90) return '●●●●';
