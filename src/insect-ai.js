@@ -3,6 +3,7 @@
 
 import { runBehavior } from './ai/registry.js';
 import { applyPersonalityContext, pickPersonality } from './ai/personality.js';
+import { applyRarityContext } from './ai/rarity.js';
 
 export const AI_PERSONALITIES = Object.freeze({
   CALM: 'calm',
@@ -74,32 +75,56 @@ function resolvePattern(entity, ai) {
   return ai.pattern || AI_PATTERNS.WALK;
 }
 
+function runBehaviorWithRaritySpeed(pattern, entity, ai, ctx) {
+  const originalSpeed = entity.grade?.speed;
+  const raritySpeed = ctx.rarity?.speed || 1;
+
+  if (entity.grade && Number.isFinite(originalSpeed)) {
+    entity.grade.speed = originalSpeed * raritySpeed;
+  }
+
+  runBehavior(pattern, entity, ai, ctx);
+
+  if (entity.grade && Number.isFinite(originalSpeed)) {
+    entity.grade.speed = originalSpeed;
+  }
+}
+
 export function updateInsectAI(entity, context = {}) {
   const ai = ensureAIState(entity);
   const player = context.player || { x: 0, y: 0 };
   const toast = typeof context.toast === 'function' ? context.toast : null;
   const random = typeof context.random === 'function' ? context.random : Math.random;
   const personalityContext = applyPersonalityContext(ai, context);
-  const personality = personalityContext.personality;
+  const rarityContext = applyRarityContext(entity, personalityContext);
+  const personality = rarityContext.personality;
+  const rarity = rarityContext.rarity;
 
   entity.drift = Number.isFinite(entity.drift) ? entity.drift : ai.phase;
-  entity.drift += 0.012 * (personality.drift || 1);
+  entity.drift += 0.012 * (personality.drift || 1) * (rarity.drift || 1);
   ai.timer += context.dt || 1;
 
   const p = playerDelta(entity, player);
   const d = Math.hypot(p.x, p.y);
   const pattern = resolvePattern(entity, ai);
 
-  runBehavior(pattern, entity, ai, {
-    ...personalityContext,
+  runBehaviorWithRaritySpeed(pattern, entity, ai, {
+    ...rarityContext,
     player,
     random,
     distanceToPlayer: d,
     deltaToPlayer: p,
   });
 
-  const shyFleeRate = 0.012 * (personality.fleeChance || 1);
-  const fleeDistance = 40 * (personality.fleeDistance || 1);
+  const signalRange = 130 * (rarity.signalRange || 1);
+  const signalRate = 0.006 * (personality.signalChance || 1) * (rarity.signalChance || 1);
+
+  if (!entity.signal && d < signalRange && random() < signalRate) {
+    entity.signal = true;
+  }
+
+  const shyFleeRate = 0.012 * (personality.fleeChance || 1) * (rarity.fleeChance || 1);
+  const fleeDistance = 40 * (personality.fleeDistance || 1) * (rarity.fleeDistance || 1);
 
   if (d < 80 && entity.mood === 'shy' && random() < shyFleeRate) {
     const away = Math.atan2(p.y, p.x);
