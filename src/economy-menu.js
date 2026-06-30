@@ -26,6 +26,8 @@ function economySummaryHTML() {
       <button data-core-max="true">탐사코어 MAX</button>
       <button data-equipment-grant="bug-lure">벌레 유인기 +1</button>
       <button data-equipment-grant="rare-alarm">희귀 알람기 +1</button>
+      <button data-bughole-open="true">BUG HOLE 열기</button>
+      <button data-bughole-all="true">BUG HOLE 전체설치</button>
     </div>
   </div>`;
 }
@@ -56,6 +58,12 @@ function wirePanel() {
       toast(`${button.textContent} 보유 ${count}`);
       window.CATCHABUGS_BACKPACK?.addItem?.(id, 1);
     };
+  });
+  panel.querySelectorAll('[data-bughole-open]').forEach((button) => {
+    button.onclick = () => window.CATCHABUGS_BUG_HOLE?.open?.();
+  });
+  panel.querySelectorAll('[data-bughole-all]').forEach((button) => {
+    button.onclick = () => window.CATCHABUGS_BUG_HOLE?.revealAllInstalled?.();
   });
 }
 function injectEconomyControls() {
