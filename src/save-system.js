@@ -26,6 +26,7 @@ function pickCore(game = {}) {
     },
     regionId: game.regionId || 'forest',
     lastEvent: game.lastEvent || '',
+    log: Array.isArray(game.log) ? game.log.slice(0, 100) : [],
   };
 }
 
@@ -47,6 +48,7 @@ export function applySaveData(game, core) {
   game.player.y = Number(core.player?.y || 0);
   game.regionId = core.regionId || game.regionId;
   game.lastEvent = core.lastEvent || game.lastEvent;
+  game.log = Array.isArray(core.log) ? core.log.slice(0, 100) : [];
   return true;
 }
 
@@ -90,7 +92,7 @@ export function renderSaveHTML(game) {
     </style>
     <div class="savePanel">
       <b>현재 저장 요약</b>
-      <div class="saveStats"><span>연구별 ${core.points}</span><span>도감 ${foundCount}종</span><span>최근 저장 ${savedAt}</span><span>좌표 ${Math.round(core.player.x)}, ${Math.round(core.player.y)}</span></div>
+      <div class="saveStats"><span>연구별 ${core.points}</span><span>도감 ${foundCount}종</span><span>최근 저장 ${savedAt}</span><span>탐험기록 ${core.log.length}개</span></div>
       <p>채집 성공, 퀘스트/업적 보상 수령 시 자동 저장됩니다. 아래 백업 코드를 복사해두면 다른 브라우저에서도 복원할 수 있습니다.</p>
       <textarea id="saveExport" readonly>${saveText}</textarea>
       <div class="saveActions"><button id="copySave">백업 복사</button><button id="manualSave">지금 저장</button></div>
