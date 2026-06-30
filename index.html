@@ -20,8 +20,7 @@
     <div id="bugs"></div>
     <div class="player"><img src="assets/player.png" onerror="this.remove();this.parentNode.textContent='🧢'"></div>
     <div class="hud">
-      <div class="card">Engine-01</div>
-      <div class="card">별 <span id="pt">0</span></div>
+      <button id="profileHud" type="button" class="profileHud"><span class="avatar">👦</span><span><b>김희찬</b><small>Lv.1 · 【초보 채집가】</small></span></button>
     </div>
     <div id="radar" class="radar" aria-label="곤충 레이더">
       <div class="radar-head"><span>BUG RADAR</span><b id="radarCount">0</b></div>
@@ -75,11 +74,14 @@
   <script type="module" src="src/dex-reward.js"></script>
   <script type="module" src="src/time-weather.js"></script>
   <script type="module" src="src/economy.js"></script>
+  <script type="module" src="src/profile-system.js"></script>
   <script type="module" src="src/npc-lab.js"></script>
   <script type="module" src="src/legendary-event.js"></script>
+  <script type="module" src="src/legendary-dex-fix.js"></script>
   <script type="module" src="src/return-discovery.js"></script>
   <script type="module" src="src/return-stones.js"></script>
   <script type="module" src="src/menu-remaster.js"></script>
   <script type="module" src="src/economy-menu.js"></script>
+  <script type="module" src="src/backpack-system.js"></script>
 </body>
 </html>
