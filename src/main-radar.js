@@ -1,6 +1,7 @@
 import { ASSET_BASE, MAP_ASSET_BASE, BUGS, GRADES } from './data/bugs.js';
 import { updateInsectAI } from './insect-ai.js';
 import { claimQuestReward, recordQuestCatch, renderQuestHTML } from './quest.js';
+import { claimAchievementReward, recordAchievementCatch, renderAchievementHTML } from './achievement.js';
 
 const $ = (s) => document.querySelector(s);
 const REGIONS = [
@@ -301,6 +302,7 @@ function finishCatch(e,result,rate){
     game.points+=gain;
     recordCatch(e,result,gain);
     recordQuestCatch({ bug:e.bug, grade:e.grade, judge:result[0], gain });
+    recordAchievementCatch({ bug:e.bug, grade:e.grade, judge:result[0], gain });
     game.lastEvent=`${e.grade.name} ${e.bug.name}를 만났다. 호박사: “오, 그건 나도 좀 보고 싶은데?”`;
     game.entities.splice(game.activeCatch,1);
     $('#pt').textContent=game.points;
@@ -372,6 +374,19 @@ function openQuest(){
       $('#pt').textContent=game.points;
       toast(`MISSION CLEAR! +${result.reward} 연구별`);
       openQuest();
+    };
+  });
+}
+function openAchievement(){
+  openModal(renderAchievementHTML());
+  document.querySelectorAll('[data-achievement-id]').forEach(btn=>{
+    btn.onclick=()=>{
+      const result=claimAchievementReward(btn.dataset.achievementId, game.points);
+      if(!result.ok) return;
+      game.points=result.points;
+      $('#pt').textContent=game.points;
+      toast(`ACHIEVEMENT! +${result.reward} 연구별`);
+      openAchievement();
     };
   });
 }
@@ -452,6 +467,7 @@ function bind(){
   $('#openDexTitle').onclick=()=>{ startGame(); openDex(); };
   $('#openDex').onclick=openDex;
   $('#openQuest').onclick=openQuest;
+  $('#openAchievement').onclick=openAchievement;
   $('#diary').onclick=()=>openModal(`<h2>오늘의 탐험일기</h2><p>${game.lastEvent}</p>`);
   $('#home').onclick=()=>toast('호박사: 귀환석은 다음 버전에서 줄게. 지금은 걸어.');
   $('#closeModal').onclick=()=>$('#modal').style.display='none';
