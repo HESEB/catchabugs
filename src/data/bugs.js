@@ -3,7 +3,8 @@ export const ASSET_PATHS = {
   fallback: 'https://raw.githubusercontent.com/HESEB/buget/main/assets/'
 };
 
-export const ASSET_BASE = ASSET_PATHS.fallback;
+export const ASSET_BASE = ASSET_PATHS.local;
+export const MAP_ASSET_BASE = ASSET_PATHS.fallback;
 
 export const BUGS = [
   { id:'ant', name:'개미', file:'ant.png', emoji:'🐜', behavior:'walk', habitat:['city','forest'] },
