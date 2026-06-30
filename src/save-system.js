@@ -88,11 +88,11 @@ export function renderSaveHTML(game) {
 
   return `<div class="saveHeader"><h2>저장 시스템 v2</h2><div>자동저장</div></div>
     <style>
-      .saveHeader{display:flex;justify-content:space-between;align-items:flex-end;margin:8px 2px 12px}.saveHeader h2{margin:0}.saveHeader div{font-size:12px;font-weight:1000;color:#0f6f56}.savePanel{padding:12px;border-radius:20px;background:linear-gradient(135deg,#fff,#f4f8ff);box-shadow:0 8px 18px #0001;border:1px solid #0000000d;margin:9px 0}.saveStats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.saveStats span{border-radius:14px;background:#0000000a;padding:9px;font-size:12px;font-weight:1000}.savePanel p{font-size:12px;color:#0009;font-weight:800;line-height:1.45}.savePanel textarea{width:100%;min-height:130px;box-sizing:border-box;border:1px solid #0002;border-radius:14px;padding:10px;font-family:ui-monospace,Consolas,monospace;font-size:10px;resize:vertical}.saveActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.saveActions button{flex:1;min-width:120px;border:0;border-radius:13px;padding:10px;font-weight:1000;background:#07111e;color:white}
+      .saveHeader{display:flex;justify-content:space-between;align-items:flex-end;margin:8px 2px 12px}.saveHeader h2{margin:0}.saveHeader div{font-size:12px;font-weight:1000;color:#0f6f56}.savePanel{padding:12px;border-radius:20px;background:linear-gradient(135deg,#fff,#f4f8ff);box-shadow:0 8px 18px #0001;border:1px solid #0000000d;margin:9px 0}.savePanel.danger{background:linear-gradient(135deg,#fff,#fff4f4);border-color:#ff7b7b55}.saveStats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.saveStats span{border-radius:14px;background:#0000000a;padding:9px;font-size:12px;font-weight:1000}.savePanel p{font-size:12px;color:#0009;font-weight:800;line-height:1.45}.savePanel textarea{width:100%;min-height:130px;box-sizing:border-box;border:1px solid #0002;border-radius:14px;padding:10px;font-family:ui-monospace,Consolas,monospace;font-size:10px;resize:vertical}.saveActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.saveActions button{flex:1;min-width:120px;border:0;border-radius:13px;padding:10px;font-weight:1000;background:#07111e;color:white}.saveActions button.danger{background:#c62828;color:white}
     </style>
     <div class="savePanel">
       <b>현재 저장 요약</b>
-      <div class="saveStats"><span>연구별 ${core.points}</span><span>도감 ${foundCount}종</span><span>최근 저장 ${savedAt}</span><span>탐험기록 ${core.log.length}개</span></div>
+      <div class="saveStats"><span>웜칩 ${core.points}</span><span>도감 ${foundCount}종</span><span>최근 저장 ${savedAt}</span><span>탐험기록 ${core.log.length}개</span></div>
       <p>채집 성공, 퀘스트/업적 보상 수령 시 자동 저장됩니다. 아래 백업 코드를 복사해두면 다른 브라우저에서도 복원할 수 있습니다.</p>
       <textarea id="saveExport" readonly>${saveText}</textarea>
       <div class="saveActions"><button id="copySave">백업 복사</button><button id="manualSave">지금 저장</button></div>
@@ -102,5 +102,10 @@ export function renderSaveHTML(game) {
       <p>복원할 백업 코드를 아래에 붙여넣고 불러오기를 누르세요.</p>
       <textarea id="saveImport" placeholder="백업 코드를 붙여넣기"></textarea>
       <div class="saveActions"><button id="loadSave">불러오기</button></div>
+    </div>
+    <div class="savePanel danger">
+      <b>데이터 초기화</b>
+      <p>현재 브라우저에 저장된 게임 진행, 배낭, 연구소, BUG HOLE, 활성 아이템 데이터를 초기화합니다. 백업이 없다면 복구할 수 없습니다.</p>
+      <div class="saveActions"><button id="resetAllData" class="danger">데이터 초기화</button></div>
     </div>`;
 }
