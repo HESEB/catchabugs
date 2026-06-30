@@ -16,6 +16,7 @@ function captureContent() {
   if (!b) return '';
   const clone = b.cloneNode(true);
   clone.querySelectorAll('#modalNavGuardBar,#modalNavGuardStyle').forEach((node) => node.remove());
+  clone.querySelectorAll('.menuNavRow').forEach((node) => node.remove());
   return clone.innerHTML;
 }
 function restorePrevious() {
@@ -48,6 +49,8 @@ function injectStyle() {
     #modalNavGuardBar .modalGuardTitle{flex:1;text-align:center;font-size:12px;font-weight:1000;color:#0008;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     #modal .box{position:relative}
     #closeModal{display:none!important}
+    #modalBody>.menuHubSheet>.menuNavRow{display:none!important}
+    #modalBody .menuNavRow{display:none!important}
   `;
   document.head.appendChild(style);
 }
@@ -67,6 +70,7 @@ function inferTitle() {
 function normalizeExistingButtons() {
   const b = body();
   if (!b) return;
+  b.querySelectorAll('.menuNavRow').forEach((row) => { row.style.display = 'none'; });
   b.querySelectorAll('[data-menu-close]').forEach((button) => {
     button.textContent = '✕ 닫기';
     button.onclick = closeModal;
@@ -75,7 +79,8 @@ function normalizeExistingButtons() {
     button.textContent = '← 뒤로';
   });
   b.querySelectorAll('button').forEach((button) => {
-    if ((button.textContent || '').trim() === '게임으로') {
+    const text = (button.textContent || '').trim();
+    if (text === '게임으로') {
       button.textContent = '✕ 닫기';
       button.onclick = closeModal;
     }
@@ -87,6 +92,8 @@ function ensureNavBar() {
   if (!b || !m || m.style.display === 'none') return;
   injectStyle();
   normalizeExistingButtons();
+  const existing = b.querySelectorAll('#modalNavGuardBar');
+  existing.forEach((node, index) => { if (index > 0) node.remove(); });
   if ($('#modalNavGuardBar')) return;
   const stack = loadHistory();
   const canBack = stack.length > 1;
@@ -100,7 +107,8 @@ function ensureNavBar() {
 function patchModalOpen() {
   const m = modal();
   const b = body();
-  if (!m || !b) return;
+  if (!m || !b || b.dataset.modalNavGuardObserver === 'on') return;
+  b.dataset.modalNavGuardObserver = 'on';
   const observer = new MutationObserver(() => {
     if (m.style.display !== 'none' && b.innerHTML.trim()) {
       const current = captureContent();
