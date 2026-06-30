@@ -14,13 +14,13 @@ function isDeveloperMenu() {
 }
 function economySummaryHTML() {
   const eco = economy();
-  const stars = eco?.getStars?.() ?? window.CATCHABUGS_GAME?.getPoints?.() ?? 0;
+  const wormChip = eco?.getStars?.() ?? window.CATCHABUGS_GAME?.getPoints?.() ?? 0;
   const core = eco?.getExplorerCore?.() ?? 0;
   const install = eco?.getBugHoleInstallCost?.() ?? 100;
   const dismantle = eco?.getBugHoleDismantleCost?.() ?? 100;
   return `<div id="economyDevPanel" class="devPanel">
     <h3>경제 / 탐사코어</h3>
-    <div style="font-size:12px;font-weight:900;margin:0 0 8px;color:#ffffffcc">⭐ 별 ${stars} · 🔷 탐사코어 ${core}<br>BUG HOLE 설치비 ${install} · 해체비 ${dismantle}</div>
+    <div style="font-size:12px;font-weight:900;margin:0 0 8px;color:#ffffffcc">🪱 웜칩 ${wormChip} · 🔷 탐사코어 ${core}<br>BUG HOLE 설치비 ${install} · 해체비 ${dismantle}</div>
     <div class="devActions">
       <button data-core-add="100">탐사코어 +100</button>
       <button data-core-max="true">탐사코어 MAX</button>
@@ -28,37 +28,6 @@ function economySummaryHTML() {
       <button data-equipment-grant="rare-alarm">희귀 알람기 +1</button>
     </div>
   </div>`;
-}
-function injectEconomyControls() {
-  if (!isDeveloperMenu()) return;
-  const sheet = $('#modalBody .menuHubSheet');
-  if (!sheet || $('#economyDevPanel')) return;
-  sheet.insertAdjacentHTML('beforeend', economySummaryHTML());
-  const panel = $('#economyDevPanel');
-  panel.querySelectorAll('[data-core-add]').forEach((button) => {
-    button.onclick = () => {
-      const amount = Number(button.dataset.coreAdd || 0);
-      const result = economy()?.addExplorerCore?.(amount, '개발자모드 탐사코어');
-      toast(`탐사코어 +${amount} → ${result}`);
-      panel.outerHTML = economySummaryHTML();
-      wirePanel();
-    };
-  });
-  panel.querySelectorAll('[data-core-max]').forEach((button) => {
-    button.onclick = () => {
-      const result = economy()?.setExplorerCore?.(999999, '개발자모드 탐사코어 MAX');
-      toast(`탐사코어 MAX → ${result}`);
-      panel.outerHTML = economySummaryHTML();
-      wirePanel();
-    };
-  });
-  panel.querySelectorAll('[data-equipment-grant]').forEach((button) => {
-    button.onclick = () => {
-      const id = button.dataset.equipmentGrant;
-      const count = economy()?.grantEquipment?.(id, 1);
-      toast(`${button.textContent} 보유 ${count}`);
-    };
-  });
 }
 function wirePanel() {
   const panel = $('#economyDevPanel');
@@ -85,8 +54,16 @@ function wirePanel() {
       const id = button.dataset.equipmentGrant;
       const count = economy()?.grantEquipment?.(id, 1);
       toast(`${button.textContent} 보유 ${count}`);
+      window.CATCHABUGS_BACKPACK?.addItem?.(id, 1);
     };
   });
+}
+function injectEconomyControls() {
+  if (!isDeveloperMenu()) return;
+  const sheet = $('#modalBody .menuHubSheet');
+  if (!sheet || $('#economyDevPanel')) return;
+  sheet.insertAdjacentHTML('beforeend', economySummaryHTML());
+  wirePanel();
 }
 function init() {
   injectEconomyControls();
