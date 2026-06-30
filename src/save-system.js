@@ -77,13 +77,6 @@ export function importSaveText(text) {
   return { ok: true, core: bundle.core, message: '저장 데이터를 불러왔습니다.' };
 }
 
-export function clearSaveData() {
-  localStorage.removeItem(CORE_SAVE_KEY);
-  localStorage.removeItem(QUEST_KEY);
-  localStorage.removeItem(ACHIEVEMENT_KEY);
-  localStorage.removeItem(BADGE_KEY);
-}
-
 export function renderSaveHTML(game) {
   const core = pickCore(game);
   const foundCount = Object.keys(core.caught || {}).length;
@@ -93,7 +86,7 @@ export function renderSaveHTML(game) {
 
   return `<div class="saveHeader"><h2>저장 시스템 v2</h2><div>자동저장</div></div>
     <style>
-      .saveHeader{display:flex;justify-content:space-between;align-items:flex-end;margin:8px 2px 12px}.saveHeader h2{margin:0}.saveHeader div{font-size:12px;font-weight:1000;color:#0f6f56}.savePanel{padding:12px;border-radius:20px;background:linear-gradient(135deg,#fff,#f4f8ff);box-shadow:0 8px 18px #0001;border:1px solid #0000000d;margin:9px 0}.saveStats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.saveStats span{border-radius:14px;background:#0000000a;padding:9px;font-size:12px;font-weight:1000}.savePanel p{font-size:12px;color:#0009;font-weight:800;line-height:1.45}.savePanel textarea{width:100%;min-height:130px;box-sizing:border-box;border:1px solid #0002;border-radius:14px;padding:10px;font-family:ui-monospace,Consolas,monospace;font-size:10px;resize:vertical}.saveActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.saveActions button{flex:1;min-width:120px;border:0;border-radius:13px;padding:10px;font-weight:1000;background:#07111e;color:white}.saveActions button.warn{background:#c33;color:white}
+      .saveHeader{display:flex;justify-content:space-between;align-items:flex-end;margin:8px 2px 12px}.saveHeader h2{margin:0}.saveHeader div{font-size:12px;font-weight:1000;color:#0f6f56}.savePanel{padding:12px;border-radius:20px;background:linear-gradient(135deg,#fff,#f4f8ff);box-shadow:0 8px 18px #0001;border:1px solid #0000000d;margin:9px 0}.saveStats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.saveStats span{border-radius:14px;background:#0000000a;padding:9px;font-size:12px;font-weight:1000}.savePanel p{font-size:12px;color:#0009;font-weight:800;line-height:1.45}.savePanel textarea{width:100%;min-height:130px;box-sizing:border-box;border:1px solid #0002;border-radius:14px;padding:10px;font-family:ui-monospace,Consolas,monospace;font-size:10px;resize:vertical}.saveActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.saveActions button{flex:1;min-width:120px;border:0;border-radius:13px;padding:10px;font-weight:1000;background:#07111e;color:white}
     </style>
     <div class="savePanel">
       <b>현재 저장 요약</b>
@@ -106,6 +99,6 @@ export function renderSaveHTML(game) {
       <b>백업 복원</b>
       <p>복원할 백업 코드를 아래에 붙여넣고 불러오기를 누르세요.</p>
       <textarea id="saveImport" placeholder="백업 코드를 붙여넣기"></textarea>
-      <div class="saveActions"><button id="loadSave">불러오기</button><button id="clearSave" class="warn">저장 초기화</button></div>
+      <div class="saveActions"><button id="loadSave">불러오기</button></div>
     </div>`;
 }
