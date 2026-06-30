@@ -30,200 +30,32 @@ function addPoints(amount) { const api = liveGame(); if (api?.addPoints) return 
 function setPoints(value) { const api = liveGame(); if (api?.setPoints) return api.setPoints(value); const core = loadCore(); core.points = Number(value || 0); saveCore(core); return core.points; }
 function addLog(text, icon = '📒') { const api = liveGame(); if (api?.addLog) return api.addLog(text, icon); const core = loadCore(); const item = { at: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }), icon, text }; core.log = [item, ...(Array.isArray(core.log) ? core.log : [])].slice(0, 100); core.lastEvent = `${icon} ${text}`; saveCore(core); return item; }
 function toast(message) { const node = $('#toast'); if (!node) return; node.textContent = message; node.style.display = 'block'; clearTimeout(toast.timer); toast.timer = setTimeout(() => node.style.display = 'none', 1400); }
-
-function loadReturnState() {
-  const saved = safeParse(localStorage.getItem(RETURN_KEY)) || { discovered: {} };
-  RETURN_POINTS.forEach((point) => { if (point.defaultOpen) saved.discovered[point.id] = true; });
-  localStorage.setItem(RETURN_KEY, JSON.stringify(saved));
-  return saved;
-}
-
-function openModal(html, options = {}) {
-  const body = $('#modalBody');
-  const modal = $('#modal');
-  if (!body || !modal) return;
-  if (options.reset) nav.stack = [];
-  if (options.push) nav.stack.push(options.push);
-  body.innerHTML = html;
-  modal.style.display = 'block';
-  wireNavButtons();
-}
+function loadReturnState() { const saved = safeParse(localStorage.getItem(RETURN_KEY)) || { discovered: {} }; RETURN_POINTS.forEach((point) => { if (point.defaultOpen) saved.discovered[point.id] = true; }); localStorage.setItem(RETURN_KEY, JSON.stringify(saved)); return saved; }
+function openModal(html, options = {}) { const body = $('#modalBody'); const modal = $('#modal'); if (!body || !modal) return; if (options.reset) nav.stack = []; if (options.push) nav.stack.push(options.push); body.innerHTML = html; modal.style.display = 'block'; wireNavButtons(); }
 function closeModal() { const modal = $('#modal'); if (modal) modal.style.display = 'none'; nav.stack = []; }
-function goBack() {
-  if (nav.stack.length > 1) {
-    nav.stack.pop();
-    const previous = nav.stack.pop();
-    route(previous, { fromBack: true });
-    return;
-  }
-  closeModal();
-}
-function wireNavButtons() {
-  const close = $('#closeModal');
-  const back = $('[data-menu-back]');
-  const exit = $('[data-menu-close]');
-  if (close) close.onclick = closeModal;
-  if (back) back.onclick = goBack;
-  if (exit) exit.onclick = closeModal;
-}
-function headerHTML(title, meta = '', intro = '') {
-  const backVisible = nav.stack.length > 1;
-  return `<div class="menuHubSheet"><div class="menuNavRow">${backVisible ? '<button data-menu-back type="button">← 뒤로</button>' : '<span></span>'}<button data-menu-close type="button">게임으로</button></div><div class="menuHubHeader"><h2>${title}</h2><small>${meta}</small></div>${intro ? `<div class="menuHubIntro">${intro}</div>` : ''}`;
-}
+function goBack() { if (nav.stack.length > 1) { nav.stack.pop(); const previous = nav.stack.pop(); route(previous, { fromBack: true }); return; } closeModal(); }
+function wireNavButtons() { const close = $('#closeModal'); const back = $('[data-menu-back]'); const exit = $('[data-menu-close]'); if (close) close.onclick = closeModal; if (back) back.onclick = goBack; if (exit) exit.onclick = closeModal; }
+function headerHTML(title, meta = '', intro = '') { const backVisible = nav.stack.length > 1; return `<div class="menuHubSheet"><div class="menuNavRow">${backVisible ? '<button data-menu-back type="button">← 뒤로</button>' : '<span></span>'}<button data-menu-close type="button">게임으로</button></div><div class="menuHubHeader"><h2>${title}</h2><small>${meta}</small></div>${intro ? `<div class="menuHubIntro">${intro}</div>` : ''}`; }
 function closeHTML() { return '</div>'; }
 function card(icon, title, desc, attrs = '') { return `<button class="menuHubItem" ${attrs}><div class="ico">${icon}</div><div><b>${title}</b><span>${desc}</span></div></button>`; }
 function triggerTarget(id) { const target = document.getElementById(id); if (!target) { toast('아직 준비 중인 메뉴입니다.'); return; } closeModal(); setTimeout(() => target.click(), 20); }
-function route(panel, options = {}) {
-  if (!panel) return;
-  const push = options.fromBack ? {} : { push: panel };
-  if (panel.type === 'hub') return openHub(panel.id, push);
-  if (panel.type === 'noteDex') return openNoteDex(push);
-  if (panel.type === 'noteExplore') return openNoteExplore(push);
-  if (panel.type === 'settings') return openSettings(push);
-  if (panel.type === 'developer') return openDeveloper(push);
-}
-function openHub(id, options = {}) {
-  if (id === 'note') return openNoteHub(options);
-  if (id === 'quest') return openQuestHub(options);
-  if (id === 'return') return openReturnHub(options);
-  if (id === 'settings') return openSettings(options);
-}
-
-function injectStyle() {
-  if ($('#menuRemasterStyle')) return;
-  const style = document.createElement('style');
-  style.id = 'menuRemasterStyle';
-  style.textContent = `
-    .bottom.menuHub{justify-content:space-around;gap:6px;padding:8px 8px 10px;background:linear-gradient(0deg,#07111ee8,#07111e99 78%,transparent);backdrop-filter:blur(10px)}
-    .bottom.menuHub>.mini:not(.menuHubBtn),.bottom.menuHub>[data-menu-legacy="true"]{display:none!important;pointer-events:none!important}.bottom.menuHub>.menuHubBtn{display:flex!important;pointer-events:auto!important}
-    .menuHubBtn{flex:1;max-width:92px;border:0;border-radius:18px;padding:9px 6px;background:#ffffff24;border:1px solid #ffffff35;color:white;font-weight:1000;box-shadow:0 8px 20px #0005;display:flex;flex-direction:column;align-items:center;gap:2px}.menuHubBtn b{font-size:20px;line-height:1}.menuHubBtn span{font-size:11px;line-height:1.15}
-    .menuNavRow{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px;height:36px}.menuNavRow button{height:34px;min-width:78px;border:0;border-radius:999px;padding:0 12px;font-size:12px;font-weight:1000;background:#07111e;color:white;line-height:34px}.menuNavRow button:last-child{background:#00000012;color:#07111e}
-    .menuHubSheet h2{margin:0;font-size:22px}.menuHubHeader{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin:6px 2px 12px}.menuHubHeader small{font-weight:1000;color:#0f6f56;text-align:right}.menuHubIntro{padding:12px;margin:8px 0 12px;border-radius:18px;background:#0000000a;color:#0009;font-size:12px;font-weight:800;line-height:1.45}.menuHubGrid{display:grid;grid-template-columns:1fr;gap:9px}.menuHubItem{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;border-radius:20px;padding:12px;background:linear-gradient(135deg,#fff,#f6fbff);box-shadow:0 8px 18px #0001;border:1px solid #0000000d}.menuHubItem .ico{width:52px;height:52px;flex:0 0 52px;border-radius:18px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:inset 0 0 0 1px #0001,0 8px 18px #0001}.menuHubItem b{display:block;font-size:15px}.menuHubItem span{display:block;margin-top:4px;color:#0008;font-size:12px;font-weight:800;line-height:1.35}.menuHubItem.locked{opacity:.42;filter:grayscale(.8)}
-    .compactList{padding:12px;margin:9px 0;border-radius:20px;background:linear-gradient(135deg,#fff,#f4fff9);border:1px solid #0000000d;box-shadow:0 8px 18px #0001}.compactList b{font-size:15px}.compactList p{margin:7px 0 0;color:#0009;font-size:12px;font-weight:800;line-height:1.45}.logList{display:grid;gap:8px}.logItem{display:grid;grid-template-columns:48px 34px 1fr;gap:8px;align-items:center;padding:10px;border-radius:16px;background:#fff;border:1px solid #0000000d}.logItem time{font-size:11px;font-weight:1000;color:#0f6f56}.logItem i{font-style:normal;font-size:21px;text-align:center}.logItem span{font-size:12px;font-weight:900;color:#000b;line-height:1.35}
-    .devPanel{margin-top:12px;padding:12px;border-radius:20px;background:#07111e;color:white}.devPanel h3{margin:0 0 8px}.devActions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.devActions button{border:0;border-radius:13px;padding:10px;font-weight:1000;background:#ffffff22;color:white;border:1px solid #ffffff33}.toggleOn{outline:2px solid #82f7c1;background:#82f7c133!important}
-  `;
-  document.head.appendChild(style);
-}
-function hideLegacyButtons() {
-  const bottom = $('.bottom');
-  if (!bottom) return;
-  OLD_BUTTON_IDS.forEach((id) => {
-    const button = document.getElementById(id);
-    if (button && bottom.contains(button)) { button.dataset.menuLegacy = 'true'; button.style.display = 'none'; }
-  });
-  Array.from(bottom.children).forEach((node) => {
-    if (!(node instanceof HTMLElement)) return;
-    const isHub = node.classList.contains('menuHubBtn') || HUB_MENUS.some((menu) => node.id === `menuHub-${menu.id}`);
-    if (!isHub) { node.dataset.menuLegacy = 'true'; node.style.display = 'none'; }
-  });
-}
-
-function openNoteHub(options = {}) {
-  openModal(`${headerHTML('📖 연구노트', '기록 2분류', '도감기록과 탐험기록만 남겨 피로도를 줄였습니다.')}
-    <div class="menuHubGrid">
-      ${card('📘', '도감기록', '곤충도감 안에서 일반 곤충과 전설 곤충을 함께 확인합니다.', 'data-target="openDex"')}
-      ${card('📒', '탐험기록', '최근 탐험 로그, 메모, 지역정보를 확인합니다.', 'data-panel="noteExplore"')}
-    </div>${closeHTML()}`, { reset: options.reset, push: options.push || { type: 'hub', id: 'note' } });
-  document.querySelectorAll('[data-target]').forEach((button) => { button.onclick = () => triggerTarget(button.dataset.target); });
-  $('[data-panel="noteExplore"]').onclick = () => route({ type: 'noteExplore' });
-}
+function route(panel, options = {}) { if (!panel) return; const push = options.fromBack ? {} : { push: panel }; if (panel.type === 'hub') return openHub(panel.id, push); if (panel.type === 'noteDex') return openNoteDex(push); if (panel.type === 'noteExplore') return openNoteExplore(push); if (panel.type === 'settings') return openSettings(push); if (panel.type === 'developer') return openDeveloper(push); }
+function openHub(id, options = {}) { if (id === 'note') return openNoteHub(options); if (id === 'quest') return openQuestHub(options); if (id === 'return') return openReturnHub(options); if (id === 'settings') return openSettings(options); }
+function injectStyle() { if ($('#menuRemasterStyle')) return; const style = document.createElement('style'); style.id = 'menuRemasterStyle'; style.textContent = `.bottom.menuHub{justify-content:space-around;gap:6px;padding:8px 8px 10px;background:linear-gradient(0deg,#07111ee8,#07111e99 78%,transparent);backdrop-filter:blur(10px)}.bottom.menuHub>.mini:not(.menuHubBtn),.bottom.menuHub>[data-menu-legacy="true"]{display:none!important;pointer-events:none!important}.bottom.menuHub>.menuHubBtn{display:flex!important;pointer-events:auto!important}.menuHubBtn{flex:1;max-width:92px;border:0;border-radius:18px;padding:9px 6px;background:#ffffff24;border:1px solid #ffffff35;color:white;font-weight:1000;box-shadow:0 8px 20px #0005;display:flex;flex-direction:column;align-items:center;gap:2px}.menuHubBtn b{font-size:20px;line-height:1}.menuHubBtn span{font-size:11px;line-height:1.15}.menuNavRow{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px;height:36px}.menuNavRow button{height:34px;min-width:78px;border:0;border-radius:999px;padding:0 12px;font-size:12px;font-weight:1000;background:#07111e;color:white;line-height:34px}.menuNavRow button:last-child{background:#00000012;color:#07111e}.menuHubSheet h2{margin:0;font-size:22px}.menuHubHeader{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin:6px 2px 12px}.menuHubHeader small{font-weight:1000;color:#0f6f56;text-align:right}.menuHubIntro{padding:12px;margin:8px 0 12px;border-radius:18px;background:#0000000a;color:#0009;font-size:12px;font-weight:800;line-height:1.45}.menuHubGrid{display:grid;grid-template-columns:1fr;gap:9px}.menuHubItem{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;border-radius:20px;padding:12px;background:linear-gradient(135deg,#fff,#f6fbff);box-shadow:0 8px 18px #0001;border:1px solid #0000000d}.menuHubItem .ico{width:52px;height:52px;flex:0 0 52px;border-radius:18px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:inset 0 0 0 1px #0001,0 8px 18px #0001}.menuHubItem b{display:block;font-size:15px}.menuHubItem span{display:block;margin-top:4px;color:#0008;font-size:12px;font-weight:800;line-height:1.35}.menuHubItem.locked{opacity:.42;filter:grayscale(.8)}.compactList{padding:12px;margin:9px 0;border-radius:20px;background:linear-gradient(135deg,#fff,#f4fff9);border:1px solid #0000000d;box-shadow:0 8px 18px #0001}.compactList b{font-size:15px}.compactList p{margin:7px 0 0;color:#0009;font-size:12px;font-weight:800;line-height:1.45}.logList{display:grid;gap:8px}.logItem{display:grid;grid-template-columns:48px 34px 1fr;gap:8px;align-items:center;padding:10px;border-radius:16px;background:#fff;border:1px solid #0000000d}.logItem time{font-size:11px;font-weight:1000;color:#0f6f56}.logItem i{font-style:normal;font-size:21px;text-align:center}.logItem span{font-size:12px;font-weight:900;color:#000b;line-height:1.35}.devPanel{margin-top:12px;padding:12px;border-radius:20px;background:#07111e;color:white}.devPanel h3{margin:0 0 8px}.devActions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.devActions button{border:0;border-radius:13px;padding:10px;font-weight:1000;background:#ffffff22;color:white;border:1px solid #ffffff33}.toggleOn{outline:2px solid #82f7c1;background:#82f7c133!important}`; document.head.appendChild(style); }
+function hideLegacyButtons() { const bottom = $('.bottom'); if (!bottom) return; OLD_BUTTON_IDS.forEach((id) => { const button = document.getElementById(id); if (button && bottom.contains(button)) { button.dataset.menuLegacy = 'true'; button.style.display = 'none'; } }); Array.from(bottom.children).forEach((node) => { if (!(node instanceof HTMLElement)) return; const isHub = node.classList.contains('menuHubBtn') || HUB_MENUS.some((menu) => node.id === `menuHub-${menu.id}`); if (!isHub) { node.dataset.menuLegacy = 'true'; node.style.display = 'none'; } }); }
+function openNoteHub(options = {}) { openModal(`${headerHTML('📖 연구노트', '기록 2분류', '도감기록과 탐험기록만 남겨 피로도를 줄였습니다.')}<div class="menuHubGrid">${card('📘', '도감기록', '곤충도감 안에서 일반 곤충과 전설 곤충을 함께 확인합니다.', 'data-target="openDex"')}${card('📒', '탐험기록', '최근 탐험 로그, 메모, 지역정보를 확인합니다.', 'data-panel="noteExplore"')}</div>${closeHTML()}`, { reset: options.reset, push: options.push || { type: 'hub', id: 'note' } }); document.querySelectorAll('[data-target]').forEach((button) => { button.onclick = () => triggerTarget(button.dataset.target); }); $('[data-panel="noteExplore"]').onclick = () => route({ type: 'noteExplore' }); }
 function openNoteDex(options = {}) { triggerTarget('openDex'); }
-function logCards() {
-  const api = liveGame();
-  const log = api?.getLog ? api.getLog() : (Array.isArray(loadCore().log) ? loadCore().log : []);
-  if (!log.length) return '<div class="compactList"><b>탐험기록 없음</b><p>지역 진입, 발견, 채집, 개발자모드 테스트가 이곳에 쌓입니다.</p></div>';
-  return `<div class="logList">${log.slice(0,100).map(item => `<div class="logItem"><time>${item.at || '-'}</time><i>${item.icon || '📒'}</i><span>${item.text || item}</span></div>`).join('')}</div>`;
-}
-function openNoteExplore(options = {}) {
-  openModal(`${headerHTML('📒 탐험기록', '최근 100개', '탐험 중 발생한 기록을 시간순으로 확인합니다.')}
-    <div class="compactList"><b>호박사의 메모</b><p>레이더 신호는 곤충, 전설 곤충, 거점 발견으로 확장됩니다.</p></div>
-    ${logCards()}
-    <div class="compactList"><b>지역정보</b><p>숲, 초원, 강가, 도시는 각기 다른 곤충과 거점을 숨기고 있습니다.</p></div>${closeHTML()}`, { push: options.push || { type: 'noteExplore' } });
-}
-function openQuestHub(options = {}) {
-  openModal(`${headerHTML('📜 퀘스트', '목표 / 업적', '퀘스트와 업적을 확인합니다.')}
-    <div class="menuHubGrid">
-      ${card('📜', '퀘스트', '메인 퀘스트, 서브 퀘스트, 일일미션을 확인합니다.', 'data-target="openQuest"')}
-      ${card('🏆', '업적', '누적 플레이 업적과 보상을 확인합니다.', 'data-target="openAchievement"')}
-      ${card('🎖️', '칭호', '해금한 칭호와 배지를 확인합니다.', 'data-target="openBadgeTitle"')}
-    </div>${closeHTML()}`, { reset: options.reset, push: options.push || { type: 'hub', id: 'quest' } });
-  document.querySelectorAll('[data-target]').forEach((button) => { button.onclick = () => triggerTarget(button.dataset.target); });
-}
+function logCards() { const api = liveGame(); const log = api?.getLog ? api.getLog() : (Array.isArray(loadCore().log) ? loadCore().log : []); if (!log.length) return '<div class="compactList"><b>탐험기록 없음</b><p>지역 진입, 발견, 채집, 개발자모드 테스트가 이곳에 쌓입니다.</p></div>'; return `<div class="logList">${log.slice(0,100).map(item => `<div class="logItem"><time>${item.at || '-'}</time><i>${item.icon || '📒'}</i><span>${item.text || item}</span></div>`).join('')}</div>`; }
+function openNoteExplore(options = {}) { openModal(`${headerHTML('📒 탐험기록', '최근 100개', '탐험 중 발생한 기록을 시간순으로 확인합니다.')}<div class="compactList"><b>호박사의 메모</b><p>레이더 신호는 곤충, 전설 곤충, 거점 발견으로 확장됩니다.</p></div>${logCards()}<div class="compactList"><b>지역정보</b><p>숲, 초원, 강가, 도시는 각기 다른 곤충과 거점을 숨기고 있습니다.</p></div>${closeHTML()}`, { push: options.push || { type: 'noteExplore' } }); }
+function openQuestHub(options = {}) { openModal(`${headerHTML('📜 퀘스트', '목표 / 업적', '퀘스트와 업적을 확인합니다.')}<div class="menuHubGrid">${card('📜', '퀘스트', '메인 퀘스트, 서브 퀘스트, 일일미션을 확인합니다.', 'data-target="openQuest"')}${card('🏆', '업적', '누적 플레이 업적과 보상을 확인합니다.', 'data-target="openAchievement"')}${card('🎖️', '칭호', '해금한 칭호와 배지를 확인합니다.', 'data-target="openBadgeTitle"')}</div>${closeHTML()}`, { reset: options.reset, push: options.push || { type: 'hub', id: 'quest' } }); document.querySelectorAll('[data-target]').forEach((button) => { button.onclick = () => triggerTarget(button.dataset.target); }); }
 function isPointOpen(point, state, settings) { return settings.returnAllOpen || !!state.discovered[point.id]; }
-function openReturnHub(options = {}) {
-  const state = loadReturnState();
-  const settings = loadSettings();
-  const items = RETURN_POINTS.map((point) => {
-    const open = isPointOpen(point, state, settings);
-    if (!open) return `<button class="menuHubItem locked" disabled><div class="ico">?</div><div><b>????</b><span>잠겨있습니다. 탐험 중 직접 발견하면 등록됩니다.</span></div></button>`;
-    return `<button class="menuHubItem" data-return-id="${point.id}"><div class="ico">${point.icon}</div><div><b>${point.name}</b><span>${point.desc}</span></div></button>`;
-  }).join('');
-  openModal(`${headerHTML('🏕 귀환', '귀환석 / 거점', '발견한 거점만 정보를 확인하고 이동할 수 있습니다.')}
-    <div class="menuHubGrid">${items}</div>${closeHTML()}`, { reset: options.reset, push: options.push || { type: 'hub', id: 'return' } });
-  document.querySelectorAll('[data-return-id]').forEach((button) => { button.onclick = () => useReturnPoint(button.dataset.returnId); });
-}
-function useReturnPoint(id) {
-  const point = RETURN_POINTS.find((item) => item.id === id);
-  if (!point) return;
-  if (point.type === 'lab') { triggerTarget('openLab'); return; }
-  const core = loadCore();
-  core.player ||= { x: 0, y: 0 };
-  core.player.x = Number(point.x || 0);
-  core.player.y = Number(point.y || 0);
-  core.lastEvent = `${point.name}으로 귀환석을 사용했다.`;
-  saveCore(core);
-  addLog(`${point.name}으로 귀환`, point.icon);
-  toast(`${point.icon} ${point.name}으로 귀환`);
-  closeModal();
-}
-function openSettings(options = {}) {
-  openModal(`${headerHTML('⚙️ 설정', '저장 / 환경 / 개발', '저장, 사운드, 진동, 개발자모드, 게임정보를 이곳으로 모았습니다.')}
-    <div class="menuHubGrid">
-      ${card('💾', '저장 / 불러오기', '수동 저장, 백업 코드 복사, 복원을 진행합니다.', 'data-target="openSave"')}
-      ${card('🔊', '사운드 / 진동', '사운드와 진동 사용 여부를 설정합니다.', 'data-sound-vibe="true"')}
-      ${card('🧪', '개발자모드', '연구별, 날씨/시간, 전설 테스트를 설정합니다.', 'data-panel="developer"')}
-      ${card('ℹ️', '게임정보', '현재 Engine 2.1 메뉴 구조와 게임 정보를 확인합니다.', 'data-game-info="true"')}
-    </div>${closeHTML()}`, { reset: options.reset, push: options.push || { type: 'settings' } });
-  document.querySelectorAll('[data-target]').forEach((button) => { button.onclick = () => triggerTarget(button.dataset.target); });
-  $('[data-panel="developer"]').onclick = () => route({ type: 'developer' });
-  $('[data-sound-vibe]').onclick = openSoundVibe;
-  $('[data-game-info]').onclick = openGameInfo;
-}
-function openSoundVibe() {
-  const settings = loadSettings();
-  openModal(`${headerHTML('🔊 사운드 / 진동', '환경설정', '효과음과 진동 설정입니다.')}
-    <div class="devPanel"><h3>사용 설정</h3><div class="devActions"><button data-toggle="sound" class="${settings.sound ? 'toggleOn' : ''}">사운드 ${settings.sound ? 'ON' : 'OFF'}</button><button data-toggle="vibration" class="${settings.vibration ? 'toggleOn' : ''}">진동 ${settings.vibration ? 'ON' : 'OFF'}</button></div></div>${closeHTML()}`, { push: { type: 'sound' } });
-  document.querySelectorAll('[data-toggle]').forEach((button) => { button.onclick = () => { const next = loadSettings(); next[button.dataset.toggle] = !next[button.dataset.toggle]; saveSettings(next); openSoundVibe(); }; });
-}
-function openDeveloper(options = {}) {
-  const settings = loadSettings();
-  openModal(`${headerHTML('🧪 개발자모드', '테스트', '일반 플레이에서는 숨겨진 테스트용 기능입니다.')}
-    <div class="devPanel"><h3>해금/자원</h3><div class="devActions"><button data-dev="returnAllOpen" class="${settings.returnAllOpen ? 'toggleOn' : ''}">귀환 전체오픈</button><button data-dev="infiniteMoney" class="${settings.infiniteMoney ? 'toggleOn' : ''}">연구별 무한</button><button data-dev-action="giveMoney">연구별 +9999</button><button data-dev-action="saveGame">강제저장</button></div></div>
-    <div class="devPanel"><h3>날씨/시간 변경</h3><div class="devActions"><button data-dev-weather="clear">☀️ 맑음</button><button data-dev-weather="cloudy">☁️ 흐림</button><button data-dev-weather="rain">🌧️ 비</button><button data-dev-weather="wind">🍃 바람</button><button data-dev-phase="아침">아침</button><button data-dev-phase="낮">낮</button><button data-dev-phase="저녁">저녁</button><button data-dev-phase="밤">밤</button></div></div>
-    <div class="devPanel"><h3>테스트 바로가기</h3><div class="devActions"><button data-legend-test="true">전설 테스트</button><button data-target="openWeather">날씨 정보</button></div></div>${closeHTML()}`, { push: options.push || { type: 'developer' } });
-  document.querySelectorAll('[data-dev]').forEach((button) => { button.onclick = () => { const next = loadSettings(); next[button.dataset.dev] = !next[button.dataset.dev]; saveSettings(next); if (button.dataset.dev === 'infiniteMoney' && next.infiniteMoney) setPoints(999999); toast(`${button.textContent} ${next[button.dataset.dev] ? 'ON' : 'OFF'}`); openDeveloper({ push: { type: 'developer' } }); }; });
-  const give = $('[data-dev-action="giveMoney"]'); if (give) give.onclick = () => { const points = addPoints(9999); toast(`연구별 +9999 → ${points}`); };
-  const save = $('[data-dev-action="saveGame"]'); if (save) save.onclick = () => { liveGame()?.save?.(); toast('강제저장 완료'); };
-  document.querySelectorAll('[data-dev-weather]').forEach((button) => { button.onclick = () => { const api = window.CATCHABUGS_TIME_WEATHER; if (!api?.setWeather) { toast('날씨 시스템 준비 중'); return; } api.setWeather(button.dataset.devWeather); addLog(`날씨 변경: ${button.textContent}`, '🌦️'); }; });
-  document.querySelectorAll('[data-dev-phase]').forEach((button) => { button.onclick = () => { const api = window.CATCHABUGS_TIME_WEATHER; if (!api?.setPhase) { toast('시간 시스템 준비 중'); return; } api.setPhase(button.dataset.devPhase); addLog(`시간 변경: ${button.dataset.devPhase}`, '🕒'); }; });
-  document.querySelectorAll('[data-target]').forEach((button) => { button.onclick = () => triggerTarget(button.dataset.target); });
-  const legendTest = $('[data-legend-test]'); if (legendTest) legendTest.onclick = () => { const api = window.CATCHABUGS_LEGENDARY; if (api?.openTest) api.openTest(); else toast('전설 테스트 준비 중'); };
-}
-function openGameInfo() {
-  openModal(`${headerHTML('ℹ️ 게임정보', 'Engine 2.1', '연결 안정화 패치 v0.93 적용 중입니다.')}
-    <div class="compactList"><b>하단 메뉴</b><p>연구노트 / 퀘스트 / 귀환 / 설정 4개로 고정합니다.</p></div>
-    <div class="compactList"><b>다음 목표</b><p>지도 탐험, 거점 발견, 실제 전설 출현을 다음 단계에서 연결합니다.</p></div>${closeHTML()}`, { push: { type: 'info' } });
-}
-function buildHub() {
-  const bottom = $('.bottom'); if (!bottom) return;
-  injectStyle(); bottom.classList.add('menuHub');
-  HUB_MENUS.forEach((menu) => {
-    let button = document.getElementById(`menuHub-${menu.id}`);
-    if (!button) { button = document.createElement('button'); button.id = `menuHub-${menu.id}`; button.className = 'mini menuHubBtn'; button.innerHTML = `<b>${menu.icon}</b><span>${menu.label}</span>`; bottom.appendChild(button); }
-    button.style.display = ''; button.onclick = () => openHub(menu.id, { reset: true });
-  });
-  hideLegacyButtons(); wireNavButtons();
-}
+function openReturnHub(options = {}) { const state = loadReturnState(); const settings = loadSettings(); const items = RETURN_POINTS.map((point) => { const open = isPointOpen(point, state, settings); if (!open) return `<button class="menuHubItem locked" disabled><div class="ico">?</div><div><b>????</b><span>잠겨있습니다. 탐험 중 직접 발견하면 등록됩니다.</span></div></button>`; return `<button class="menuHubItem" data-return-id="${point.id}"><div class="ico">${point.icon}</div><div><b>${point.name}</b><span>${point.desc}</span></div></button>`; }).join(''); openModal(`${headerHTML('🏕 귀환', '귀환석 / 거점', '발견한 거점만 정보를 확인하고 이동할 수 있습니다.')}<div class="menuHubGrid">${items}</div>${closeHTML()}`, { reset: options.reset, push: options.push || { type: 'hub', id: 'return' } }); document.querySelectorAll('[data-return-id]').forEach((button) => { button.onclick = () => useReturnPoint(button.dataset.returnId); }); }
+function useReturnPoint(id) { const point = RETURN_POINTS.find((item) => item.id === id); if (!point) return; if (point.type === 'lab') { triggerTarget('openLab'); return; } const api = liveGame(); if (api?.setPlayer) { api.setPlayer(point.x, point.y, `${point.name}으로 귀환`, point.icon); toast(`${point.icon} ${point.name}으로 귀환`); closeModal(); return; } const core = loadCore(); core.player ||= { x: 0, y: 0 }; core.player.x = Number(point.x || 0); core.player.y = Number(point.y || 0); core.lastEvent = `${point.name}으로 귀환석을 사용했다.`; saveCore(core); addLog(`${point.name}으로 귀환`, point.icon); toast(`${point.icon} ${point.name}으로 귀환`); closeModal(); }
+function openSettings(options = {}) { openModal(`${headerHTML('⚙️ 설정', '저장 / 환경 / 개발', '저장, 사운드, 진동, 개발자모드, 게임정보를 이곳으로 모았습니다.')}<div class="menuHubGrid">${card('💾', '저장 / 불러오기', '수동 저장, 백업 코드 복사, 복원을 진행합니다.', 'data-target="openSave"')}${card('🔊', '사운드 / 진동', '사운드와 진동 사용 여부를 설정합니다.', 'data-sound-vibe="true"')}${card('🧪', '개발자모드', '연구별, 날씨/시간, 전설 테스트를 설정합니다.', 'data-panel="developer"')}${card('ℹ️', '게임정보', '현재 Engine 2.1 메뉴 구조와 게임 정보를 확인합니다.', 'data-game-info="true"')}</div>${closeHTML()}`, { reset: options.reset, push: options.push || { type: 'settings' } }); document.querySelectorAll('[data-target]').forEach((button) => { button.onclick = () => triggerTarget(button.dataset.target); }); $('[data-panel="developer"]').onclick = () => route({ type: 'developer' }); $('[data-sound-vibe]').onclick = openSoundVibe; $('[data-game-info]').onclick = openGameInfo; }
+function openSoundVibe() { const settings = loadSettings(); openModal(`${headerHTML('🔊 사운드 / 진동', '환경설정', '효과음과 진동 설정입니다.')}<div class="devPanel"><h3>사용 설정</h3><div class="devActions"><button data-toggle="sound" class="${settings.sound ? 'toggleOn' : ''}">사운드 ${settings.sound ? 'ON' : 'OFF'}</button><button data-toggle="vibration" class="${settings.vibration ? 'toggleOn' : ''}">진동 ${settings.vibration ? 'ON' : 'OFF'}</button></div></div>${closeHTML()}`, { push: { type: 'sound' } }); document.querySelectorAll('[data-toggle]').forEach((button) => { button.onclick = () => { const next = loadSettings(); next[button.dataset.toggle] = !next[button.dataset.toggle]; saveSettings(next); openSoundVibe(); }; }); }
+function openDeveloper(options = {}) { const settings = loadSettings(); openModal(`${headerHTML('🧪 개발자모드', '테스트', '일반 플레이에서는 숨겨진 테스트용 기능입니다.')}<div class="devPanel"><h3>해금/자원</h3><div class="devActions"><button data-dev="returnAllOpen" class="${settings.returnAllOpen ? 'toggleOn' : ''}">귀환 전체오픈</button><button data-dev="infiniteMoney" class="${settings.infiniteMoney ? 'toggleOn' : ''}">연구별 무한</button><button data-dev-action="giveMoney">연구별 +9999</button><button data-dev-action="saveGame">강제저장</button></div></div><div class="devPanel"><h3>날씨/시간 변경</h3><div class="devActions"><button data-dev-weather="clear">☀️ 맑음</button><button data-dev-weather="cloudy">☁️ 흐림</button><button data-dev-weather="rain">🌧️ 비</button><button data-dev-weather="wind">🍃 바람</button><button data-dev-phase="아침">아침</button><button data-dev-phase="낮">낮</button><button data-dev-phase="저녁">저녁</button><button data-dev-phase="밤">밤</button></div></div><div class="devPanel"><h3>테스트 바로가기</h3><div class="devActions"><button data-legend-test="true">전설 테스트</button><button data-target="openWeather">날씨 정보</button></div></div>${closeHTML()}`, { push: options.push || { type: 'developer' } }); document.querySelectorAll('[data-dev]').forEach((button) => { button.onclick = () => { const next = loadSettings(); next[button.dataset.dev] = !next[button.dataset.dev]; saveSettings(next); if (button.dataset.dev === 'infiniteMoney' && next.infiniteMoney) setPoints(999999); if (button.dataset.dev === 'returnAllOpen' && next.returnAllOpen) window.CATCHABUGS_RETURN?.revealAll?.(); toast(`${button.textContent} ${next[button.dataset.dev] ? 'ON' : 'OFF'}`); openDeveloper({ push: { type: 'developer' } }); }; }); const give = $('[data-dev-action="giveMoney"]'); if (give) give.onclick = () => { const points = addPoints(9999); toast(`연구별 +9999 → ${points}`); }; const save = $('[data-dev-action="saveGame"]'); if (save) save.onclick = () => { liveGame()?.save?.(); toast('강제저장 완료'); }; document.querySelectorAll('[data-dev-weather]').forEach((button) => { button.onclick = () => { const api = window.CATCHABUGS_TIME_WEATHER; if (!api?.setWeather) { toast('날씨 시스템 준비 중'); return; } api.setWeather(button.dataset.devWeather); addLog(`날씨 변경: ${button.textContent}`, '🌦️'); }; }); document.querySelectorAll('[data-dev-phase]').forEach((button) => { button.onclick = () => { const api = window.CATCHABUGS_TIME_WEATHER; if (!api?.setPhase) { toast('시간 시스템 준비 중'); return; } api.setPhase(button.dataset.devPhase); addLog(`시간 변경: ${button.dataset.devPhase}`, '🕒'); }; }); document.querySelectorAll('[data-target]').forEach((button) => { button.onclick = () => triggerTarget(button.dataset.target); }); const legendTest = $('[data-legend-test]'); if (legendTest) legendTest.onclick = () => { const api = window.CATCHABUGS_LEGENDARY; if (api?.openTest) api.openTest(); else toast('전설 테스트 준비 중'); }; }
+function openGameInfo() { openModal(`${headerHTML('ℹ️ 게임정보', 'Engine 2.1', '연결 안정화 패치 v0.94 적용 중입니다.')}<div class="compactList"><b>하단 메뉴</b><p>연구노트 / 퀘스트 / 귀환 / 설정 4개로 고정합니다.</p></div><div class="compactList"><b>거점 발견</b><p>맵에서 미등록 거점 근처로 이동하면 귀환석에 자동 등록됩니다.</p></div>${closeHTML()}`, { push: { type: 'info' } }); }
+function buildHub() { const bottom = $('.bottom'); if (!bottom) return; injectStyle(); bottom.classList.add('menuHub'); HUB_MENUS.forEach((menu) => { let button = document.getElementById(`menuHub-${menu.id}`); if (!button) { button = document.createElement('button'); button.id = `menuHub-${menu.id}`; button.className = 'mini menuHubBtn'; button.innerHTML = `<b>${menu.icon}</b><span>${menu.label}</span>`; bottom.appendChild(button); } button.style.display = ''; button.onclick = () => openHub(menu.id, { reset: true }); }); hideLegacyButtons(); wireNavButtons(); }
 function initMenuRemaster() { buildHub(); const bottom = $('.bottom'); if (!bottom || bottom.dataset.menuObserver === 'on') return; bottom.dataset.menuObserver = 'on'; new MutationObserver(() => buildHub()).observe(bottom, { childList: true, subtree: false }); }
 document.addEventListener('DOMContentLoaded', () => setTimeout(initMenuRemaster, 80));
 setTimeout(initMenuRemaster, 300);
