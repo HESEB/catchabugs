@@ -1,20 +1,19 @@
-const CORE_SAVE_KEY = 'catchabugs.core.v2';
 const LAB_STORAGE_KEY = 'catchabugs.lab.v2';
 
 const UPGRADES = Object.freeze([
-  { id: 'radar-sensitivity', icon: '📡', name: '레이더 감도', desc: '생태 신호를 더 또렷하게 읽는 연구.', baseCost: 120, max: 5, effect: (level) => `신호 해석 Lv.${level}` },
-  { id: 'net-balance', icon: '🕸️', name: '채집망 밸런스', desc: '채집 타이밍을 안정화하는 연구.', baseCost: 150, max: 5, effect: (level) => `채집 안정 Lv.${level}` },
-  { id: 'field-note', icon: '📒', name: '필드 노트', desc: '도감과 탐험 기록을 정리하는 연구.', baseCost: 100, max: 4, effect: (level) => `기록 보정 Lv.${level}` },
-  { id: 'weather-reading', icon: '🌦️', name: '날씨 판독', desc: '시간·날씨 변화에 따른 곤충 습성을 분석한다.', baseCost: 180, max: 3, effect: (level) => `환경 분석 Lv.${level}` },
+  { id: 'radar-sensitivity', icon: '📡', name: '레이더 감도', desc: '생태 신호를 더 또렷하게 읽는 연구.', baseCost: 40, max: 5, effect: (level) => `신호 해석 Lv.${level}` },
+  { id: 'net-balance', icon: '🕸️', name: '채집망 밸런스', desc: '채집 타이밍을 안정화하는 연구.', baseCost: 50, max: 5, effect: (level) => `채집 안정 Lv.${level}` },
+  { id: 'field-note', icon: '📒', name: '필드 노트', desc: '도감과 탐험 기록을 정리하는 연구.', baseCost: 35, max: 4, effect: (level) => `기록 보정 Lv.${level}` },
+  { id: 'weather-reading', icon: '🌦️', name: '날씨 판독', desc: '시간·날씨 변화에 따른 곤충 습성을 분석한다.', baseCost: 60, max: 3, effect: (level) => `환경 분석 Lv.${level}` },
+  { id: 'bug-hole-research', icon: '🌀', name: 'BUG HOLE 연구', desc: '귀환 이동과 거점 연결 효율을 개선한다.', baseCost: 80, max: 5, effect: (level) => `공간 연결 Lv.${level}` },
 ]);
 
 function $(selector) { return document.querySelector(selector); }
 function safeParse(raw) { try { return raw ? JSON.parse(raw) : null; } catch { return null; } }
 function liveGame() { return window.CATCHABUGS_GAME || null; }
-function loadCore() { return safeParse(localStorage.getItem(CORE_SAVE_KEY)) || { points: 0, caught: {}, player: { x: 0, y: 0 } }; }
-function saveCore(core) { core.savedAt = new Date().toISOString(); localStorage.setItem(CORE_SAVE_KEY, JSON.stringify(core)); const pointsNode = $('#pt'); if (pointsNode) pointsNode.textContent = Number(core.points || 0); }
-function getPoints() { const api = liveGame(); if (api?.getPoints) return api.getPoints(); return Number(loadCore().points || 0); }
-function spendPoints(cost) { const current = getPoints(); if (current < cost) return false; const api = liveGame(); if (api?.addPoints) { api.addPoints(-cost); return true; } const core = loadCore(); core.points = Math.max(0, Number(core.points || 0) - cost); saveCore(core); return true; }
+function economy() { return window.CATCHABUGS_ECONOMY || null; }
+function getExplorerCore() { return economy()?.getExplorerCore?.() ?? 0; }
+function spendExplorerCore(cost, reason) { return economy()?.spendExplorerCore?.(cost, reason) || false; }
 function loadLab() { return safeParse(localStorage.getItem(LAB_STORAGE_KEY)) || { upgrades: {} }; }
 function saveLab(state) { localStorage.setItem(LAB_STORAGE_KEY, JSON.stringify(state)); }
 function toast(message) { const node = $('#toast'); if (!node) return; node.textContent = message; node.style.display = 'block'; clearTimeout(toast.timer); toast.timer = setTimeout(() => node.style.display = 'none', 1300); }
@@ -26,7 +25,7 @@ function upgradeCard(upgrade, lab) {
   const level = Number(lab.upgrades?.[upgrade.id] || 0);
   const maxed = level >= upgrade.max;
   const cost = upgradeCost(upgrade, level);
-  const affordable = getPoints() >= cost;
+  const affordable = getExplorerCore() >= cost;
   const pct = Math.round((level / upgrade.max) * 100);
   return `<article class="labUpgradeCard ${maxed ? 'maxed' : ''}">
     <div class="labUpgradeIcon">${upgrade.icon}</div>
@@ -35,7 +34,7 @@ function upgradeCard(upgrade, lab) {
       <p>${upgrade.desc}</p>
       <div class="labBar"><i style="width:${pct}%"></i></div>
       <small>${upgrade.effect(level)}</small>
-      <button data-upgrade-id="${upgrade.id}" ${!maxed && affordable ? '' : 'disabled'}>${maxed ? '완료' : `${cost} 연구별`}</button>
+      <button data-upgrade-id="${upgrade.id}" ${!maxed && affordable ? '' : 'disabled'}>${maxed ? '완료' : `🔷 ${cost}`}</button>
     </div>
   </article>`;
 }
@@ -44,12 +43,14 @@ function labHTML() {
   const lab = loadLab();
   const upgradeHtml = UPGRADES.map((upgrade) => upgradeCard(upgrade, lab)).join('');
   const total = labLevelTotal(lab);
-  return `<div class="labHeader"><h2>연구소</h2><div>연구별 ${getPoints()}</div></div>
+  const stars = liveGame()?.getPoints?.() || 0;
+  const core = getExplorerCore();
+  return `<div class="labHeader"><h2>연구소</h2><div>⭐ ${stars} · 🔷 ${core}</div></div>
     <style>
       .labHeader{display:flex;justify-content:space-between;align-items:flex-end;margin:8px 2px 12px}.labHeader h2{margin:0}.labHeader div{font-size:12px;font-weight:1000;color:#0f6f56}.labSummary{padding:12px;margin:9px 0;border-radius:20px;background:linear-gradient(135deg,#fff,#f4fff9);border:1px solid #0000000d;box-shadow:0 8px 18px #0001}.labSummary b{font-size:15px}.labSummary p{margin:7px 0 0;color:#0009;font-size:12px;font-weight:800}.labSection{margin:14px 0 8px;font-size:13px;font-weight:1000;color:#17231f}.labUpgradeCard{display:flex;gap:12px;align-items:center;padding:12px;margin:9px 0;border-radius:20px;background:linear-gradient(135deg,#fff,#f6fbff);border:1px solid #0000000d;box-shadow:0 8px 18px #0001}.labUpgradeIcon{width:54px;height:54px;flex:0 0 54px;border-radius:18px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:inset 0 0 0 1px #0001,0 8px 18px #0001}.labUpgradeBody{flex:1;min-width:0}.labTop{display:flex;justify-content:space-between;gap:8px;align-items:center}.labTop b{font-size:15px}.labTop span{font-size:10px;font-weight:1000;border-radius:999px;padding:5px 7px;background:#0bbf831d;color:#087653}.labUpgradeBody p{margin:6px 0;color:#0009;font-size:12px;font-weight:800;line-height:1.45}.labUpgradeBody small{display:block;color:#0008;font-size:11px;font-weight:900;margin:4px 0 8px}.labUpgradeBody button{border:0;border-radius:12px;padding:8px 10px;font-weight:1000;background:#07111e;color:white}.labUpgradeBody button:disabled{opacity:.35}.labBar{height:10px;background:#0001;border-radius:999px;overflow:hidden;margin:7px 0}.labBar i{display:block;height:100%;background:linear-gradient(120deg,#82f7c1,#6bb2ff,#a573ed);border-radius:999px}.labUpgradeCard.maxed{border-color:#82f7c1aa;box-shadow:0 8px 22px #82f7c122}
     </style>
-    <div class="labSummary"><b>곤충 연구소</b><p>연구 레벨 총합 ${total}. 연구별로 탐험 장비와 기록 기능을 개선할 수 있습니다.</p></div>
-    <div class="labSection">연구 업그레이드</div>${upgradeHtml}`;
+    <div class="labSummary"><b>곤충 연구소</b><p>연구 레벨 총합 ${total}. 연구소 업그레이드는 별이 아니라 탐사코어를 소비합니다. 별은 상점용, 탐사코어는 연구·제작·BUG HOLE용 재화입니다.</p></div>
+    <div class="labSection">연구 프로젝트</div>${upgradeHtml}`;
 }
 
 function openLab() {
@@ -62,7 +63,7 @@ function openLab() {
       const level = Number(lab.upgrades[upgrade.id] || 0);
       const cost = upgradeCost(upgrade, level);
       if (level >= upgrade.max) return;
-      if (!spendPoints(cost)) { toast('연구별이 부족합니다.'); return; }
+      if (!spendExplorerCore(cost, `${upgrade.name} 연구`)) { toast('탐사코어가 부족합니다.'); return; }
       lab.upgrades[upgrade.id] = level + 1;
       saveLab(lab);
       liveGame()?.addLog?.(`${upgrade.name} Lv.${level + 1} 연구 완료`, upgrade.icon);
