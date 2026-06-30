@@ -1,14 +1,14 @@
 const ACTIVE_ITEMS_KEY = 'catchabugs.activeItems.v1';
 
 const ITEM_EFFECTS = Object.freeze({
-  'bug-lure': { icon: '🪤', name: '벌레 유인기', durationMin: 30, desc: '곤충 생성량 +50%', stats: { spawnBoost: 0.5 } },
-  'rare-alarm': { icon: '🔔', name: '희귀 알람기', durationMin: 30, desc: '희귀 이상 신호 알림', stats: { rareAlarm: 1, rareBoost: 0.5 } },
-  'radar-boost': { icon: '📡', name: '레이더 증폭기', durationMin: 30, desc: '레이더 거리 +20m', stats: { radarBonus: 20 } },
-  'sap-trap': { icon: '🪵', name: '수액통', durationMin: 45, desc: '숲 곤충 유인 +30%', stats: { forestBoost: 0.3, spawnBoost: 0.2 } },
-  'flower-lure': { icon: '🌼', name: '꽃 유인기', durationMin: 45, desc: '초원 곤충 유인 +30%', stats: { fieldBoost: 0.3, spawnBoost: 0.2 } },
-  'water-trap': { icon: '💧', name: '수생 트랩', durationMin: 45, desc: '강가 곤충 유인 +30%', stats: { riverBoost: 0.3, spawnBoost: 0.2 } },
-  'bug-light': { icon: '💡', name: '곤충등', durationMin: 45, desc: '야행성 신호 강화', stats: { nightBoost: 0.3, rareBoost: 0.3 } },
-  'bug-cookie': { icon: '🍪', name: '곤충 쿠키', durationMin: 15, desc: '일반 곤충 출현 +20%', stats: { spawnBoost: 0.2 } },
+  'bug-lure': { icon: '🪤', name: '벌레 유인기', durationMin: 30, desc: '곤충 생성량 +50%', spawnNow: 4, stats: { spawnBoost: 0.5 } },
+  'rare-alarm': { icon: '🔔', name: '희귀 알람기', durationMin: 30, desc: '희귀 이상 신호 알림', spawnNow: 2, stats: { rareAlarm: 1, rareBoost: 0.5 } },
+  'radar-boost': { icon: '📡', name: '레이더 증폭기', durationMin: 30, desc: '레이더 거리 +20m', spawnNow: 1, stats: { radarBonus: 20 } },
+  'sap-trap': { icon: '🪵', name: '수액통', durationMin: 45, desc: '숲 곤충 유인 +30%', spawnNow: 3, stats: { forestBoost: 0.3, spawnBoost: 0.2 } },
+  'flower-lure': { icon: '🌼', name: '꽃 유인기', durationMin: 45, desc: '초원 곤충 유인 +30%', spawnNow: 3, stats: { fieldBoost: 0.3, spawnBoost: 0.2 } },
+  'water-trap': { icon: '💧', name: '수생 트랩', durationMin: 45, desc: '강가 곤충 유인 +30%', spawnNow: 3, stats: { riverBoost: 0.3, spawnBoost: 0.2 } },
+  'bug-light': { icon: '💡', name: '곤충등', durationMin: 45, desc: '야행성 신호 강화', spawnNow: 3, stats: { nightBoost: 0.3, rareBoost: 0.3 } },
+  'bug-cookie': { icon: '🍪', name: '곤충 쿠키', durationMin: 15, desc: '일반 곤충 출현 +20%', spawnNow: 2, stats: { spawnBoost: 0.2 } },
 });
 
 function $(selector) { return document.querySelector(selector); }
@@ -39,6 +39,7 @@ function activate(id, options = {}) {
   saveRaw(state);
   toast(`${def.icon} ${def.name} 활성화`);
   addLog(`${def.name} 사용: ${def.desc}`, def.icon);
+  setTimeout(() => window.CATCHABUGS_GAME?.spawnBoosted?.(def.spawnNow || 2), 80);
   return { ok: true, item: def, active: state.active };
 }
 function remainingMs(itemOrId) {
@@ -89,6 +90,7 @@ function pulseRareAlarm() {
   if (t - last < 45000) return;
   pulseRareAlarm.last = t;
   toast('🔔 희귀 알람기: 희귀 이상 신호를 탐색 중');
+  window.CATCHABUGS_GAME?.spawnBoosted?.(1);
 }
 function init() {
   injectStyle();
