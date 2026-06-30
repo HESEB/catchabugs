@@ -6,11 +6,7 @@ function body() { return $('#modalBody'); }
 function safeParse(raw) { try { return raw ? JSON.parse(raw) : null; } catch { return null; } }
 function loadHistory() { return safeParse(sessionStorage.getItem(MODAL_HISTORY_KEY)) || []; }
 function saveHistory(stack) { sessionStorage.setItem(MODAL_HISTORY_KEY, JSON.stringify(stack.slice(-12))); }
-function closeModal() {
-  const m = modal();
-  if (m) m.style.display = 'none';
-  saveHistory([]);
-}
+function closeModal() { const m = modal(); if (m) m.style.display = 'none'; saveHistory([]); }
 function captureContent() {
   const b = body();
   if (!b) return '';
@@ -20,14 +16,19 @@ function captureContent() {
   return clone.innerHTML;
 }
 function restorePrevious() {
-  const stack = loadHistory();
+  // 이전 HTML을 그대로 복원하면 각 메뉴의 onclick이 사라져 먹통이 되므로,
+  // 안전하게 최상위 메뉴 허브로 돌아가도록 처리한다.
   const b = body();
-  if (!b || stack.length < 2) { closeModal(); return; }
-  stack.pop();
-  const previous = stack.pop();
-  saveHistory(stack);
-  b.innerHTML = previous;
-  setTimeout(() => { pushCurrent(false); ensureNavBar(); }, 0);
+  if (!b) { closeModal(); return; }
+  const text = b.textContent || '';
+  const modalApi = window.CATCHABUGS_MODAL_NAV;
+  if (text.includes('호박사') || text.includes('나상인') || text.includes('연구소')) {
+    window.CATCHABUGS_LAB?.open?.();
+    return;
+  }
+  if (text.includes('배낭')) { window.CATCHABUGS_BACKPACK?.open?.(); return; }
+  if (text.includes('BUG HOLE')) { window.CATCHABUGS_BUG_HOLE?.open?.(); return; }
+  closeModal();
 }
 function pushCurrent(dedupe = true) {
   const html = captureContent();
@@ -57,9 +58,7 @@ function injectStyle() {
 function inferTitle() {
   const b = body();
   if (!b) return '메뉴';
-  const candidates = [
-    '.menuHubHeader h2', '.bugHoleHeader h2', '.profileName b', '.bagSheet h2', '.labHeader h2', '.dexHeader h2', 'h2'
-  ];
+  const candidates = ['.menuHubHeader h2', '.bugHoleHeader h2', '.profileName b', '.bagSheet h2', '.labHeader h2', '.dexHeader h2', 'h2'];
   for (const selector of candidates) {
     const node = b.querySelector(selector);
     const text = node?.textContent?.trim();
@@ -71,19 +70,11 @@ function normalizeExistingButtons() {
   const b = body();
   if (!b) return;
   b.querySelectorAll('.menuNavRow').forEach((row) => { row.style.display = 'none'; });
-  b.querySelectorAll('[data-menu-close]').forEach((button) => {
-    button.textContent = '✕ 닫기';
-    button.onclick = closeModal;
-  });
-  b.querySelectorAll('[data-menu-back]').forEach((button) => {
-    button.textContent = '← 뒤로';
-  });
+  b.querySelectorAll('[data-menu-close]').forEach((button) => { button.textContent = '✕ 닫기'; button.onclick = closeModal; });
+  b.querySelectorAll('[data-menu-back]').forEach((button) => { button.textContent = '← 뒤로'; });
   b.querySelectorAll('button').forEach((button) => {
     const text = (button.textContent || '').trim();
-    if (text === '게임으로') {
-      button.textContent = '✕ 닫기';
-      button.onclick = closeModal;
-    }
+    if (text === '게임으로') { button.textContent = '✕ 닫기'; button.onclick = closeModal; }
   });
 }
 function ensureNavBar() {
@@ -94,15 +85,19 @@ function ensureNavBar() {
   normalizeExistingButtons();
   const existing = b.querySelectorAll('#modalNavGuardBar');
   existing.forEach((node, index) => { if (index > 0) node.remove(); });
-  if ($('#modalNavGuardBar')) return;
-  const stack = loadHistory();
-  const canBack = stack.length > 1;
-  const bar = document.createElement('div');
-  bar.id = 'modalNavGuardBar';
-  bar.innerHTML = `<button type="button" data-modal-back ${canBack ? '' : 'disabled'}>← 뒤로</button><div class="modalGuardTitle">${inferTitle()}</div><button type="button" data-modal-close>✕ 닫기</button>`;
-  b.insertBefore(bar, b.firstChild);
-  bar.querySelector('[data-modal-back]').onclick = restorePrevious;
-  bar.querySelector('[data-modal-close]').onclick = closeModal;
+  let bar = $('#modalNavGuardBar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'modalNavGuardBar';
+    bar.innerHTML = `<button type="button" data-modal-back>← 뒤로</button><div class="modalGuardTitle"></div><button type="button" data-modal-close>✕ 닫기</button>`;
+    b.insertBefore(bar, b.firstChild);
+  }
+  const back = bar.querySelector('[data-modal-back]');
+  const close = bar.querySelector('[data-modal-close]');
+  const title = bar.querySelector('.modalGuardTitle');
+  if (title) title.textContent = inferTitle();
+  if (back) back.onclick = restorePrevious;
+  if (close) close.onclick = closeModal;
 }
 function patchModalOpen() {
   const m = modal();
@@ -121,16 +116,8 @@ function patchModalOpen() {
   const modalObserver = new MutationObserver(() => setTimeout(ensureNavBar, 0));
   modalObserver.observe(m, { attributes: true, attributeFilter: ['style', 'class'] });
 }
-function patchCloseButton() {
-  const close = $('#closeModal');
-  if (close) close.onclick = closeModal;
-}
-function init() {
-  injectStyle();
-  patchCloseButton();
-  patchModalOpen();
-  setInterval(() => { patchCloseButton(); ensureNavBar(); }, 900);
-}
+function patchCloseButton() { const close = $('#closeModal'); if (close) close.onclick = closeModal; }
+function init() { injectStyle(); patchCloseButton(); patchModalOpen(); setInterval(() => { patchCloseButton(); ensureNavBar(); }, 900); }
 window.CATCHABUGS_MODAL_NAV = { close: closeModal, back: restorePrevious, ensure: ensureNavBar, reset(){ saveHistory([]); } };
 document.addEventListener('DOMContentLoaded', () => setTimeout(init, 100));
 setTimeout(init, 500);
