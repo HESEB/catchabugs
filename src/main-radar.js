@@ -1,4 +1,4 @@
-import { ASSET_BASE, BUGS, GRADES } from './data/bugs.js';
+import { ASSET_BASE, MAP_ASSET_BASE, BUGS, GRADES } from './data/bugs.js';
 
 const $ = (s) => document.querySelector(s);
 const REGIONS = [
@@ -45,7 +45,7 @@ function currentRegion(){
 function applyRegion(r){
   if(game.regionId!==r.id){ game.regionId=r.id; toast(`${r.mark} ${r.name} 지역 진입`); }
   const map=$('#map');
-  map.style.background=`${r.color} url('${ASSET_BASE}${r.map}') center/260px repeat`;
+  map.style.background=`${r.color} url('${MAP_ASSET_BASE}${r.map}') center/260px repeat`;
   const card=document.querySelector('.hud .card');
   if(card) card.textContent=`${r.mark} ${r.name}`;
 }
