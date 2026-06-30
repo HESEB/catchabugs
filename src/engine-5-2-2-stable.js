@@ -1,5 +1,6 @@
 const BUG_HOLE_KEY = 'catchabugs.bughole.v1';
 const BADGE_TITLE_KEY = 'catchabugs.badgeTitle.v1';
+const RETURN_KEY = 'catchabugs.returnStones.v1';
 
 function $(selector) { return document.querySelector(selector); }
 function safeParse(raw) { try { return raw ? JSON.parse(raw) : null; } catch { return null; } }
@@ -21,6 +22,7 @@ function openModal(html) {
 }
 function loadHole() { return safeParse(localStorage.getItem(BUG_HOLE_KEY)) || null; }
 function saveHole(hole) { localStorage.setItem(BUG_HOLE_KEY, JSON.stringify(hole)); }
+function loadReturnState() { return safeParse(localStorage.getItem(RETURN_KEY)) || { found: {}, installed: {}, discovered: {} }; }
 
 function injectStableStyles() {
   if ($('#engine522StableStyle')) return;
@@ -28,8 +30,8 @@ function injectStableStyles() {
   style.id = 'engine522StableStyle';
   style.textContent = `
     .bug{padding:18px;margin:-18px;touch-action:manipulation}.bug .sp{pointer-events:none}.bug .lab{pointer-events:none}
-    .bugHoleMarker{position:absolute;left:50%;top:50%;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:13px solid #fff;filter:drop-shadow(0 0 8px #fff);z-index:5;transform:translate(-50%,-50%);pointer-events:none}
-    .engine522Card{padding:12px;margin:9px 0;border-radius:20px;background:linear-gradient(135deg,#fff,#f6fbff);border:1px solid #0000000d;box-shadow:0 8px 18px #0001}.engine522Card b{font-size:15px}.engine522Card p{margin:7px 0;color:#0009;font-size:12px;font-weight:800;line-height:1.45}.engine522Actions{display:grid;gap:8px;margin-top:10px}.engine522Actions button{border:0;border-radius:14px;background:#07111e;color:white;padding:11px 12px;font-weight:1000}.engine522Actions button.secondary{background:#eaf1f3;color:#07111e}
+    .engine522BugHoleTriangle{position:absolute;left:50%;top:50%;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:15px solid #fff;filter:drop-shadow(0 0 10px #fff) drop-shadow(0 4px 7px #0009);z-index:20;transform:translate(-50%,-50%);pointer-events:none}
+    .engine522Card{padding:12px;margin:9px 0;border-radius:20px;background:linear-gradient(135deg,#fff,#f6fbff);border:1px solid #0000000d;box-shadow:0 8px 18px #0001}.engine522Card b{font-size:15px}.engine522Card p{margin:7px 0;color:#0009;font-size:12px;font-weight:800;line-height:1.45}.engine522Actions{display:grid;gap:8px;margin-top:10px}.engine522Actions button{border:0;border-radius:14px;background:#07111e;color:white;padding:11px 12px;font-weight:1000}.engine522Actions button.secondary{background:#eaf1f3;color:#07111e}.engine522Actions button:disabled{opacity:.35}
   `;
   document.head.appendChild(style);
 }
@@ -48,7 +50,7 @@ function patchRadarCompassClick() {
   if (!radar || radar.dataset.engine522Compass === 'on') return;
   radar.dataset.engine522Compass = 'on';
   radar.addEventListener('click', (event) => {
-    if (event.target.closest('.radar-blip')) return;
+    if (event.target.closest('.radar-blip') || event.target.closest('#bugHoleMarker')) return;
     const btn = $('#compassBtn');
     if (btn) {
       btn.click();
@@ -58,34 +60,59 @@ function patchRadarCompassClick() {
   });
 }
 
+function installedBugHolePoints() {
+  const system = window.CATCHABUGS_BUG_HOLE;
+  const state = system?.loadState?.() || loadReturnState();
+  const points = system?.points || [];
+  const result = [];
+  points.forEach((point) => {
+    if (point.x === undefined || point.y === undefined) return;
+    if (state.installed?.[point.id] || state.discovered?.[point.id] || state.found?.[point.id]) {
+      result.push(point);
+    }
+  });
+  const custom = loadHole();
+  if (custom) result.push({ id: 'custom-bug-hole', name: custom.name || 'BUG HOLE', x: custom.x, y: custom.y });
+  return result;
+}
+
 function updateBugHoleMarker() {
   const screen = $('#radarScreen');
   const api = window.CATCHABUGS_GAME;
   if (!screen || !api?.getPlayer) return;
   let marker = $('#bugHoleMarker');
-  const hole = loadHole();
-  if (!hole) {
+  const player = api.getPlayer();
+  const points = installedBugHolePoints();
+  const nearest = points
+    .map((point) => ({ point, d: Math.hypot(Number(point.x || 0) - Number(player.x || 0), Number(point.y || 0) - Number(player.y || 0)) }))
+    .sort((a, b) => a.d - b.d)[0];
+  if (!nearest) {
     if (marker) marker.remove();
     return;
   }
   if (!marker) {
     marker = document.createElement('div');
     marker.id = 'bugHoleMarker';
-    marker.className = 'bugHoleMarker';
+    marker.className = 'engine522BugHoleTriangle';
     screen.appendChild(marker);
   }
-  const player = api.getPlayer();
-  const dx = Number(hole.x || 0) - Number(player.x || 0);
-  const dy = Number(hole.y || 0) - Number(player.y || 0);
+  const point = nearest.point;
+  const dx = Number(point.x || 0) - Number(player.x || 0);
+  const dy = Number(point.y || 0) - Number(player.y || 0);
   const range = 620;
   const x = Math.max(8, Math.min(92, 50 + (dx / range) * 48));
   const y = Math.max(8, Math.min(92, 50 + (dy / range) * 48));
   marker.style.left = `${x}%`;
   marker.style.top = `${y}%`;
-  marker.title = hole.name || 'BUG HOLE';
+  marker.title = point.name || 'BUG HOLE';
 }
 
 function openBugHoleMenu() {
+  if (window.CATCHABUGS_BUG_HOLE?.open) {
+    window.CATCHABUGS_BUG_HOLE.open();
+    setTimeout(updateBugHoleMarker, 100);
+    return;
+  }
   const api = window.CATCHABUGS_GAME;
   const player = api?.getPlayer?.() || { x: 0, y: 0, regionId: 'forest' };
   const hole = loadHole();
@@ -116,10 +143,18 @@ function openBugHoleMenu() {
 }
 
 function patchBugHoleButton() {
-  const home = $('#home');
-  if (!home || home.dataset.engine522BugHole === 'on') return;
-  home.dataset.engine522BugHole = 'on';
-  home.onclick = (event) => { event.preventDefault(); openBugHoleMenu(); };
+  ['#menuHub-return', '#home'].forEach((selector) => {
+    const button = $(selector);
+    if (!button) return;
+    button.dataset.engine522BugHole = 'on';
+    button.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+      openBugHoleMenu();
+    };
+    if (selector === '#menuHub-return') button.innerHTML = '<b>🌀</b><span>BUG HOLE</span>';
+  });
 }
 
 function patchModalBack() {
