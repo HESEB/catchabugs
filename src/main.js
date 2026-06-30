@@ -1,6 +1,14 @@
 import { ASSET_BASE, BUGS, GRADES } from './data/bugs.js';
 
 const $ = (selector) => document.querySelector(selector);
+
+const REGIONS = [
+  { id: 'forest', name: '숲', map: 'map_park.png', color: '#55b969', mark: '🌲' },
+  { id: 'field', name: '초원', map: 'map_field.png', color: '#78c96f', mark: '🌾' },
+  { id: 'river', name: '강가', map: 'map_river.png', color: '#63bad8', mark: '🌊' },
+  { id: 'city', name: '도시', map: 'map_city.png', color: '#8d9ba8', mark: '🏙️' }
+];
+
 const game = {
   player: { x: 0, y: 0 },
   points: 0,
@@ -9,6 +17,7 @@ const game = {
   activeCatch: null,
   catchStart: 0,
   input: { dragging: false, lx: 0, ly: 0, vx: 0, vy: 0 },
+  regionId: 'forest',
   lastEvent: '오늘은 아직 특별한 일이 없었다. 호박사: “그런 날도 있는 거지.”'
 };
 
@@ -24,6 +33,39 @@ function toast(message) {
   toast.timer = setTimeout(() => node.style.display = 'none', 1300);
 }
 
+function getRegionById(id) {
+  return REGIONS.find(region => region.id === id) || REGIONS[0];
+}
+
+function currentRegion() {
+  const x = game.player.x;
+  const y = game.player.y;
+  const riverBand = Math.abs(Math.sin((x + y) / 620));
+  const cityPatch = Math.sin((x - y) / 780);
+  const forestPatch = Math.cos(x / 540) + Math.sin(y / 480);
+
+  if (riverBand > .9) return getRegionById('river');
+  if (cityPatch > .62) return getRegionById('city');
+  if (forestPatch > .45) return getRegionById('forest');
+  return getRegionById('field');
+}
+
+function applyRegion(region) {
+  if (game.regionId !== region.id) {
+    game.regionId = region.id;
+    toast(`${region.mark} ${region.name} 지역에 들어왔다.`);
+  }
+
+  const map = $('#map');
+  if (map) {
+    map.dataset.region = region.id;
+    map.style.background = `${region.color} url('${ASSET_BASE}${region.map}') center/260px repeat`;
+  }
+
+  const areaCard = document.querySelector('.hud .card');
+  if (areaCard) areaCard.textContent = `${region.mark} ${region.name}`;
+}
+
 function pickGrade() {
   const r = Math.random();
   if (r < .004) return GRADES[8];
@@ -37,14 +79,22 @@ function pickGrade() {
   return GRADES[0];
 }
 
+function pickBugForRegion(region) {
+  const pool = BUGS.filter(bug => Array.isArray(bug.habitat) && bug.habitat.includes(region.id));
+  const list = pool.length ? pool : BUGS;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 function spawnNearPlayer() {
-  const bug = BUGS[Math.floor(Math.random() * BUGS.length)];
+  const region = currentRegion();
+  const bug = pickBugForRegion(region);
   const grade = pickGrade();
   const angle = Math.random() * Math.PI * 2;
   const distance = 130 + Math.random() * 360;
   game.entities.push({
     bug,
     grade,
+    regionId: region.id,
     wx: game.player.x + Math.cos(angle) * distance,
     wy: game.player.y + Math.sin(angle) * distance,
     signal: Math.random() < .35,
@@ -57,7 +107,7 @@ function startGame() {
   $('#title').style.display = 'none';
   $('#game').style.display = 'block';
   while (game.entities.length < 8) spawnNearPlayer();
-  toast('호박사: 구조를 나눴다. 이제 덜 엉킬 거야. 아마도.');
+  toast('호박사: 지역별 생태 조사를 시작하자.');
 }
 
 function screenPos(entity) {
@@ -133,13 +183,16 @@ function renderRadar() {
     const direction = Math.abs(near.dx) > Math.abs(near.dy)
       ? (near.dx > 0 ? '오른쪽' : '왼쪽')
       : (near.dy > 0 ? '아래쪽' : '위쪽');
-    $('#radarHint').textContent = `${direction} ${step}걸음 · ${near.entity.signal ? '생태 신호' : near.entity.bug.name}`;
+    const region = getRegionById(near.entity.regionId);
+    $('#radarHint').textContent = `${direction} ${step}걸음 · ${region.mark} ${near.entity.signal ? '생태 신호' : near.entity.bug.name}`;
   } else {
     $('#radarHint').textContent = '주변 신호 없음';
   }
 }
 
 function renderWorld() {
+  const region = currentRegion();
+  applyRegion(region);
   $('#map').style.transform = `translate(${-game.player.x % 260}px,${-game.player.y % 260}px) scale(1.2)`;
   $('#pt').textContent = game.points;
 
@@ -229,7 +282,7 @@ function openModal(html) {
 }
 
 function openDex() {
-  const html = '<h2>곤충 앨범</h2>' + BUGS.map(b => `<div class="dexitem">${bugImage(b)}<div><b>${b.name}</b><br>만난 수: ${game.caught[b.name] || 0}<br><small>호박사 메모: ${game.caught[b.name] ? '봤다. 귀엽다. 아마도.' : '아직 못 봤다. 나도 궁금하다.'}</small></div></div>`).join('');
+  const html = '<h2>곤충 앨범</h2>' + BUGS.map(b => `<div class="dexitem">${bugImage(b)}<div><b>${b.name}</b><br>만난 수: ${game.caught[b.name] || 0}<br><small>서식지: ${(b.habitat || []).map(id => getRegionById(id).name).join(', ')}<br>호박사 메모: ${game.caught[b.name] ? '봤다. 귀엽다. 아마도.' : '아직 못 봤다. 나도 궁금하다.'}</small></div></div>`).join('');
   openModal(html);
 }
 
