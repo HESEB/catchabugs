@@ -3,7 +3,7 @@ const MENU_SETTINGS_KEY = 'catchabugs.menuSettings.v2';
 const RETURN_KEY = 'catchabugs.returnStones.v1';
 
 const OLD_BUTTON_IDS = [
-  'openDex', 'openDexTitle', 'openDexReward', 'openQuest', 'openAchievement', 'openBadgeTitle',
+  'openDex', 'openDexReward', 'openQuest', 'openAchievement', 'openBadgeTitle',
   'openSave', 'openWeather', 'openLab', 'openLegendary', 'diary', 'home'
 ];
 
@@ -129,6 +129,8 @@ function injectStyle() {
   style.id = 'menuRemasterStyle';
   style.textContent = `
     .bottom.menuHub{justify-content:space-around;gap:6px;padding:8px 8px 10px;background:linear-gradient(0deg,#07111ee8,#07111e99 78%,transparent);backdrop-filter:blur(10px)}
+    .bottom.menuHub>.mini:not(.menuHubBtn),.bottom.menuHub>[data-menu-legacy="true"]{display:none!important;pointer-events:none!important}
+    .bottom.menuHub>.menuHubBtn{display:flex!important;pointer-events:auto!important}
     .menuHubBtn{flex:1;max-width:92px;border:0;border-radius:18px;padding:9px 6px;background:#ffffff24;border:1px solid #ffffff35;color:white;font-weight:1000;box-shadow:0 8px 20px #0005;display:flex;flex-direction:column;align-items:center;gap:2px}.menuHubBtn b{font-size:20px;line-height:1}.menuHubBtn span{font-size:11px;line-height:1.15}
     .menuNavRow{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px}.menuNavRow button{border:0;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:1000;background:#07111e;color:white}.menuNavRow button:last-child{background:#00000012;color:#07111e}
     .menuHubSheet h2{margin:0;font-size:22px}.menuHubHeader{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin:6px 2px 12px}.menuHubHeader small{font-weight:1000;color:#0f6f56;text-align:right}.menuHubIntro{padding:12px;margin:8px 0 12px;border-radius:18px;background:#0000000a;color:#0009;font-size:12px;font-weight:800;line-height:1.45}.menuHubGrid{display:grid;grid-template-columns:1fr;gap:9px}.menuHubItem{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;border-radius:20px;padding:12px;background:linear-gradient(135deg,#fff,#f6fbff);box-shadow:0 8px 18px #0001;border:1px solid #0000000d}.menuHubItem .ico{width:52px;height:52px;flex:0 0 52px;border-radius:18px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:inset 0 0 0 1px #0001,0 8px 18px #0001}.menuHubItem b{display:block;font-size:15px}.menuHubItem span{display:block;margin-top:4px;color:#0008;font-size:12px;font-weight:800;line-height:1.35}.menuHubItem.locked{opacity:.48;filter:grayscale(.55)}
@@ -142,13 +144,18 @@ function hideLegacyButtons() {
   if (!bottom) return;
   OLD_BUTTON_IDS.forEach((id) => {
     const button = document.getElementById(id);
-    if (button) {
+    if (button && bottom.contains(button)) {
       button.dataset.menuLegacy = 'true';
       button.style.display = 'none';
     }
   });
-  Array.from(bottom.querySelectorAll('.mini')).forEach((button) => {
-    if (!button.classList.contains('menuHubBtn')) button.style.display = 'none';
+  Array.from(bottom.children).forEach((node) => {
+    if (!(node instanceof HTMLElement)) return;
+    const isHub = node.classList.contains('menuHubBtn') || HUB_MENUS.some((menu) => node.id === `menuHub-${menu.id}`);
+    if (!isHub) {
+      node.dataset.menuLegacy = 'true';
+      node.style.display = 'none';
+    }
   });
 }
 
@@ -318,7 +325,6 @@ function buildHub() {
   if (!bottom) return;
   injectStyle();
   bottom.classList.add('menuHub');
-  hideLegacyButtons();
   HUB_MENUS.forEach((menu) => {
     let button = document.getElementById(`menuHub-${menu.id}`);
     if (!button) {
@@ -328,9 +334,11 @@ function buildHub() {
       button.innerHTML = `<b>${menu.icon}</b><span>${menu.label}</span>`;
       bottom.appendChild(button);
     }
+    button.dataset.menuHub = 'true';
     button.style.display = '';
     button.onclick = () => openHub(menu.id, { reset: true });
   });
+  hideLegacyButtons();
   wireNavButtons();
 }
 
