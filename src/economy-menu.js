@@ -10,7 +10,9 @@ function toast(message) {
 }
 function isDeveloperMenu() {
   const body = $('#modalBody');
-  return !!body && body.textContent.includes('개발자모드');
+  if (!body) return false;
+  const title = body.querySelector('.menuHubHeader h2, h2')?.textContent?.trim() || '';
+  return title.includes('개발자모드') || title.includes('🧪 개발자모드');
 }
 function economySummaryHTML() {
   const eco = economy();
@@ -67,8 +69,12 @@ function wirePanel() {
   });
 }
 function injectEconomyControls() {
-  if (!isDeveloperMenu()) return;
-  const sheet = $('#modalBody .menuHubSheet');
+  const panel = $('#economyDevPanel');
+  if (!isDeveloperMenu()) {
+    if (panel) panel.remove();
+    return;
+  }
+  const sheet = $('#modalBody .menuHubSheet') || $('#modalBody');
   if (!sheet || $('#economyDevPanel')) return;
   sheet.insertAdjacentHTML('beforeend', economySummaryHTML());
   wirePanel();
