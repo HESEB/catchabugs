@@ -61,6 +61,7 @@ function pickGrade(){
   if(r<.83) return GRADES[1];
   return GRADES[0];
 }
+function gradeRank(name){ return Math.max(0, GRADES.findIndex(g=>g.name===name)); }
 function pickBug(region){
   const pool=BUGS.filter(b=>Array.isArray(b.habitat)&&b.habitat.includes(region.id));
   const list=pool.length?pool:BUGS;
@@ -216,15 +217,27 @@ function judge(p){
   if(d<28) return ['GOOD',15,1.1];
   return ['MISS',0,.8];
 }
+function recordCatch(e,result,gain){
+  const key=e.bug.name;
+  const old=game.caught[key];
+  const rec=typeof old==='object'&&old?old:{ count:Number(old||0), bestGrade:null, bestJudge:null, bestScore:0, firstSeen:null };
+  rec.count+=1;
+  rec.firstSeen=rec.firstSeen || new Date().toLocaleDateString('ko-KR');
+  rec.bestScore=Math.max(rec.bestScore||0,gain);
+  if(!rec.bestGrade || gradeRank(e.grade.name)>gradeRank(rec.bestGrade)) rec.bestGrade=e.grade.name;
+  if(!rec.bestJudge || judgeRank(result[0])>judgeRank(rec.bestJudge)) rec.bestJudge=result[0];
+  game.caught[key]=rec;
+}
+function judgeRank(name){ return {MISS:0,GOOD:1,GREAT:2,PERFECT:3}[name]||0; }
 function tryCatch(){
   if(game.activeCatch===null) return;
   const e=game.entities[game.activeCatch];
   const result=judge(cursorPos());
-  const rate=Math.max(.1,Math.min(.95,e.grade.rate+(result[1]?.08:-.1)));
+  const rate=Math.max(.1,Math.min(.95,e.grade.rate+(result[1] ? .08 : -.1)));
   if(Math.random()<rate && result[1]>0){
     const gain=Math.round(e.grade.pts*result[2]);
     game.points+=gain;
-    game.caught[e.bug.name]=(game.caught[e.bug.name]||0)+1;
+    recordCatch(e,result,gain);
     game.lastEvent=`${e.grade.name} ${e.bug.name}를 만났다. 호박사: “오, 그건 나도 좀 보고 싶은데?”`;
     game.entities.splice(game.activeCatch,1);
     toast(`${result[0]}! 연구별 +${gain}`);
@@ -232,9 +245,33 @@ function tryCatch(){
   }else toast('놓쳤다. 그래도 흔적은 남았다.');
 }
 function openModal(html){ $('#modalBody').innerHTML=html; $('#modal').style.display='block'; }
+function caughtRecord(bug){
+  const rec=game.caught[bug.name];
+  if(typeof rec==='number') return { count:rec, bestGrade:null, bestJudge:null, bestScore:0, firstSeen:null };
+  return rec || { count:0, bestGrade:null, bestJudge:null, bestScore:0, firstSeen:null };
+}
 function openDex(){
-  const html='<h2>곤충 앨범</h2>'+BUGS.map(b=>`<div class="dexitem">${bugImage(b)}<div><b>${b.name}</b><br>만난 수: ${game.caught[b.name]||0}<br><small>서식지: ${(b.habitat||[]).map(id=>regionById(id).name).join(', ')}<br>호박사 메모: ${game.caught[b.name]?'봤다. 귀엽다. 아마도.':'아직 못 봤다. 나도 궁금하다.'}</small></div></div>`).join('');
-  openModal(html);
+  const total=BUGS.length;
+  const found=BUGS.filter(b=>caughtRecord(b).count>0).length;
+  const percent=Math.round((found/total)*100);
+  const cards=BUGS.map(b=>{
+    const rec=caughtRecord(b);
+    const foundIt=rec.count>0;
+    const habitats=(b.habitat||[]).map(id=>`${regionById(id).mark} ${regionById(id).name}`).join(' · ');
+    const best=rec.bestGrade || '미확인';
+    const judgeLabel=rec.bestJudge || '-';
+    const image=foundIt ? bugImage(b) : `<div class="dexUnknown">${b.emoji}</div>`;
+    return `<article class="dexCard ${foundIt?'found':'locked'}">
+      <div class="dexImage">${image}</div>
+      <div class="dexInfo">
+        <div class="dexTop"><b>${foundIt?b.name:'???'}</b><span>${foundIt?'발견':'미발견'}</span></div>
+        <div class="dexMeta">서식지: ${habitats || '미상'}</div>
+        <div class="dexStats"><span>만난 수 ${rec.count}</span><span>최고 ${best}</span><span>판정 ${judgeLabel}</span></div>
+        <small>호박사 메모: ${foundIt?'기록 완료. 더 좋은 판정과 희귀도를 노려보자.':'레이더 신호를 따라가면 발견할 수 있다.'}</small>
+      </div>
+    </article>`;
+  }).join('');
+  openModal(`<div class="dexHeader"><h2>곤충 앨범</h2><div>${found}/${total} · ${percent}%</div></div><div class="dexProgress"><i style="width:${percent}%"></i></div><div class="dexGrid">${cards}</div>`);
 }
 function tick(){
   const input=game.input;
