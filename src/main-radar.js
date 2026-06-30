@@ -80,9 +80,11 @@ function onDeviceOrientation(e){ if(!game.compass.enabled) return; const heading
 function bind(){ $('#start').onclick=startGame; $('#openDexTitle').onclick=()=>{ startGame(); openDex(); }; $('#openDex').onclick=openDex; $('#openQuest').onclick=openQuest; $('#openAchievement').onclick=openAchievement; $('#openSave').onclick=openSave; $('#diary').onclick=()=>openModal(`<h2>오늘의 탐험일기</h2><p>${game.lastEvent}</p>`); $('#home').onclick=()=>{ autoSaveNow('home'); toast('호박사: 귀환석은 메뉴에서 사용해줘.'); }; $('#closeModal').onclick=()=>$('#modal').style.display='none'; $('#close').onclick=closeCatch; $('#catch').onclick=tryCatch; const field=$('#game'); field.addEventListener('pointerdown',e=>{ game.input.dragging=true; game.input.lx=e.clientX; game.input.ly=e.clientY; }); field.addEventListener('pointermove',e=>{ if(!game.input.dragging) return; const dx=e.clientX-game.input.lx, dy=e.clientY-game.input.ly; game.input.lx=e.clientX; game.input.ly=e.clientY; game.input.vx=Math.max(-1,Math.min(1,dx*.025)); game.input.vy=Math.max(-1,Math.min(1,-dy*.025)); markAutoSaveDirty(); }); field.addEventListener('pointerup',()=>{ game.input.dragging=false; markAutoSaveDirty(); }); field.addEventListener('pointercancel',()=>{ game.input.dragging=false; markAutoSaveDirty(); }); window.addEventListener('keydown',e=>{ game.keys[e.code]=true; }); window.addEventListener('keyup',e=>{ game.keys[e.code]=false; }); }
 
 window.CATCHABUGS_GAME = {
-  addPoints(amount){ game.points = Number(game.points || 0) + Number(amount || 0); updatePointHud(); addLog(`연구별 ${amount > 0 ? '+' : ''}${amount}`, '⭐'); autoSaveNow('dev-points'); return game.points; },
-  setPoints(value){ game.points = Number(value || 0); updatePointHud(); addLog(`연구별 ${game.points}로 변경`, '⭐'); autoSaveNow('dev-set-points'); return game.points; },
+  addPoints(amount){ game.points = Math.max(0, Number(game.points || 0) + Number(amount || 0)); updatePointHud(); addLog(`연구별 ${amount > 0 ? '+' : ''}${amount}`, '⭐'); autoSaveNow('dev-points'); return game.points; },
+  setPoints(value){ game.points = Math.max(0, Number(value || 0)); updatePointHud(); addLog(`연구별 ${game.points}로 변경`, '⭐'); autoSaveNow('dev-set-points'); return game.points; },
   getPoints(){ return Number(game.points || 0); },
+  getPlayer(){ return { x: Number(game.player.x || 0), y: Number(game.player.y || 0), regionId: game.regionId }; },
+  setPlayer(x, y, label='이동', icon='🏕️'){ game.player.x = Number(x || 0); game.player.y = Number(y || 0); addLog(label, icon); autoSaveNow('set-player'); return this.getPlayer(); },
   addLog,
   getLog(){ return Array.isArray(game.log) ? game.log.slice(0,100) : []; },
   save(){ return autoSaveNow('api'); }
