@@ -1,6 +1,8 @@
 // CATCHA BUGS - Insect AI module
 // AI movement logic lives here so the main radar loop only coordinates rendering and input.
 
+import { runBehavior } from './ai/registry.js';
+
 export const AI_PERSONALITIES = Object.freeze({
   CALM: 'calm',
   CURIOUS: 'curious',
@@ -62,6 +64,12 @@ function playerDelta(entity, player) {
   };
 }
 
+function resolvePattern(entity, ai) {
+  const behavior = entity.bug?.behavior;
+  if (behavior && behavior !== 'idle') return behavior;
+  return ai.pattern || AI_PATTERNS.WALK;
+}
+
 export function updateInsectAI(entity, context = {}) {
   const ai = ensureAIState(entity);
   const player = context.player || { x: 0, y: 0 };
@@ -74,24 +82,15 @@ export function updateInsectAI(entity, context = {}) {
 
   const p = playerDelta(entity, player);
   const d = Math.hypot(p.x, p.y);
-  const s = entity.grade?.speed || 1;
-  const behavior = entity.bug?.behavior || ai.pattern;
+  const pattern = resolvePattern(entity, ai);
 
-  if (behavior === 'flutter' || ai.pattern === AI_PATTERNS.FLUTTER) {
-    entity.wx += Math.sin(entity.drift * 1.8) * 0.18 * s;
-    entity.wy += Math.cos(entity.drift * 1.1) * 0.14 * s;
-  } else if (behavior === 'jump' || ai.pattern === AI_PATTERNS.JUMP) {
-    if (random() < 0.012) {
-      entity.wx += (random() * 2 - 1) * 14;
-      entity.wy += (random() * 2 - 1) * 14;
-    }
-  } else if (behavior === 'dart' || ai.pattern === AI_PATTERNS.DART) {
-    entity.wx += Math.sin(entity.drift * 2.7) * 0.25 * s;
-    entity.wy += Math.cos(entity.drift * 2.1) * 0.2 * s;
-  } else {
-    entity.wx += Math.sin(entity.drift) * 0.06 * s;
-    entity.wy += Math.cos(entity.drift * 0.7) * 0.05 * s;
-  }
+  runBehavior(pattern, entity, ai, {
+    ...context,
+    player,
+    random,
+    distanceToPlayer: d,
+    deltaToPlayer: p,
+  });
 
   if (d < 80 && entity.mood === 'shy' && random() < 0.012) {
     const away = Math.atan2(p.y, p.x);
