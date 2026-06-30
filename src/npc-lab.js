@@ -10,8 +10,11 @@ const UPGRADES = Object.freeze([
 
 function $(selector) { return document.querySelector(selector); }
 function safeParse(raw) { try { return raw ? JSON.parse(raw) : null; } catch { return null; } }
+function liveGame() { return window.CATCHABUGS_GAME || null; }
 function loadCore() { return safeParse(localStorage.getItem(CORE_SAVE_KEY)) || { points: 0, caught: {}, player: { x: 0, y: 0 } }; }
 function saveCore(core) { core.savedAt = new Date().toISOString(); localStorage.setItem(CORE_SAVE_KEY, JSON.stringify(core)); const pointsNode = $('#pt'); if (pointsNode) pointsNode.textContent = Number(core.points || 0); }
+function getPoints() { const api = liveGame(); if (api?.getPoints) return api.getPoints(); return Number(loadCore().points || 0); }
+function spendPoints(cost) { const current = getPoints(); if (current < cost) return false; const api = liveGame(); if (api?.addPoints) { api.addPoints(-cost); return true; } const core = loadCore(); core.points = Math.max(0, Number(core.points || 0) - cost); saveCore(core); return true; }
 function loadLab() { return safeParse(localStorage.getItem(LAB_STORAGE_KEY)) || { upgrades: {} }; }
 function saveLab(state) { localStorage.setItem(LAB_STORAGE_KEY, JSON.stringify(state)); }
 function toast(message) { const node = $('#toast'); if (!node) return; node.textContent = message; node.style.display = 'block'; clearTimeout(toast.timer); toast.timer = setTimeout(() => node.style.display = 'none', 1300); }
@@ -19,11 +22,11 @@ function openModal(html) { const body = $('#modalBody'); const modal = $('#modal
 function upgradeCost(upgrade, level) { return Math.round(upgrade.baseCost * (1 + level * 0.65)); }
 function labLevelTotal(lab) { return Object.values(lab.upgrades || {}).reduce((sum, value) => sum + Number(value || 0), 0); }
 
-function upgradeCard(upgrade, lab, core) {
+function upgradeCard(upgrade, lab) {
   const level = Number(lab.upgrades?.[upgrade.id] || 0);
   const maxed = level >= upgrade.max;
   const cost = upgradeCost(upgrade, level);
-  const affordable = Number(core.points || 0) >= cost;
+  const affordable = getPoints() >= cost;
   const pct = Math.round((level / upgrade.max) * 100);
   return `<article class="labUpgradeCard ${maxed ? 'maxed' : ''}">
     <div class="labUpgradeIcon">${upgrade.icon}</div>
@@ -38,11 +41,10 @@ function upgradeCard(upgrade, lab, core) {
 }
 
 function labHTML() {
-  const core = loadCore();
   const lab = loadLab();
-  const upgradeHtml = UPGRADES.map((upgrade) => upgradeCard(upgrade, lab, core)).join('');
+  const upgradeHtml = UPGRADES.map((upgrade) => upgradeCard(upgrade, lab)).join('');
   const total = labLevelTotal(lab);
-  return `<div class="labHeader"><h2>연구소</h2><div>연구별 ${Number(core.points || 0)}</div></div>
+  return `<div class="labHeader"><h2>연구소</h2><div>연구별 ${getPoints()}</div></div>
     <style>
       .labHeader{display:flex;justify-content:space-between;align-items:flex-end;margin:8px 2px 12px}.labHeader h2{margin:0}.labHeader div{font-size:12px;font-weight:1000;color:#0f6f56}.labSummary{padding:12px;margin:9px 0;border-radius:20px;background:linear-gradient(135deg,#fff,#f4fff9);border:1px solid #0000000d;box-shadow:0 8px 18px #0001}.labSummary b{font-size:15px}.labSummary p{margin:7px 0 0;color:#0009;font-size:12px;font-weight:800}.labSection{margin:14px 0 8px;font-size:13px;font-weight:1000;color:#17231f}.labUpgradeCard{display:flex;gap:12px;align-items:center;padding:12px;margin:9px 0;border-radius:20px;background:linear-gradient(135deg,#fff,#f6fbff);border:1px solid #0000000d;box-shadow:0 8px 18px #0001}.labUpgradeIcon{width:54px;height:54px;flex:0 0 54px;border-radius:18px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:inset 0 0 0 1px #0001,0 8px 18px #0001}.labUpgradeBody{flex:1;min-width:0}.labTop{display:flex;justify-content:space-between;gap:8px;align-items:center}.labTop b{font-size:15px}.labTop span{font-size:10px;font-weight:1000;border-radius:999px;padding:5px 7px;background:#0bbf831d;color:#087653}.labUpgradeBody p{margin:6px 0;color:#0009;font-size:12px;font-weight:800;line-height:1.45}.labUpgradeBody small{display:block;color:#0008;font-size:11px;font-weight:900;margin:4px 0 8px}.labUpgradeBody button{border:0;border-radius:12px;padding:8px 10px;font-weight:1000;background:#07111e;color:white}.labUpgradeBody button:disabled{opacity:.35}.labBar{height:10px;background:#0001;border-radius:999px;overflow:hidden;margin:7px 0}.labBar i{display:block;height:100%;background:linear-gradient(120deg,#82f7c1,#6bb2ff,#a573ed);border-radius:999px}.labUpgradeCard.maxed{border-color:#82f7c1aa;box-shadow:0 8px 22px #82f7c122}
     </style>
@@ -54,17 +56,16 @@ function openLab() {
   openModal(labHTML());
   document.querySelectorAll('[data-upgrade-id]').forEach((button) => {
     button.onclick = () => {
-      const core = loadCore();
       const lab = loadLab();
       const upgrade = UPGRADES.find((item) => item.id === button.dataset.upgradeId);
       if (!upgrade) return;
       const level = Number(lab.upgrades[upgrade.id] || 0);
       const cost = upgradeCost(upgrade, level);
-      if (level >= upgrade.max || Number(core.points || 0) < cost) return;
-      core.points = Number(core.points || 0) - cost;
+      if (level >= upgrade.max) return;
+      if (!spendPoints(cost)) { toast('연구별이 부족합니다.'); return; }
       lab.upgrades[upgrade.id] = level + 1;
-      saveCore(core);
       saveLab(lab);
+      liveGame()?.addLog?.(`${upgrade.name} Lv.${level + 1} 연구 완료`, upgrade.icon);
       toast(`${upgrade.icon} ${upgrade.name} Lv.${level + 1}`);
       openLab();
     };
@@ -82,6 +83,7 @@ function ensureLabButton() {
   button.onclick = openLab;
 }
 
+window.CATCHABUGS_LAB = { open: openLab };
 function initLab() { ensureLabButton(); }
 document.addEventListener('DOMContentLoaded', initLab);
 setTimeout(initLab, 0);
