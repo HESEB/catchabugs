@@ -4,6 +4,7 @@
 import { runBehavior } from './ai/registry.js';
 import { applyPersonalityContext, pickPersonality } from './ai/personality.js';
 import { applyRarityContext } from './ai/rarity.js';
+import { applySpeciesContext, getSpeciesProfile } from './ai/species.js';
 
 export const AI_PERSONALITIES = Object.freeze({
   CALM: 'calm',
@@ -53,12 +54,21 @@ export function ensureAIState(entity) {
   if (!entity.ai) {
     entity.ai = createAIState(Math.random());
   }
-  if (!entity.ai.personality) {
+
+  const species = getSpeciesProfile(entity);
+
+  if (species.personality) {
+    entity.ai.personality = species.personality;
+  } else if (!entity.ai.personality) {
     entity.ai.personality = pickPersonality(entity.ai.seed || Math.random());
   }
-  if (!entity.ai.pattern || entity.ai.pattern === AI_PATTERNS.IDLE) {
+
+  if (species.pattern) {
+    entity.ai.pattern = species.pattern;
+  } else if (!entity.ai.pattern || entity.ai.pattern === AI_PATTERNS.IDLE) {
     entity.ai.pattern = getDefaultPattern(entity.bug || entity);
   }
+
   return entity.ai;
 }
 
@@ -69,18 +79,23 @@ function playerDelta(entity, player) {
   };
 }
 
-function resolvePattern(entity, ai) {
+function resolvePattern(entity, ai, species) {
+  if (species?.pattern) return species.pattern;
   const behavior = entity.bug?.behavior;
   if (behavior && behavior !== 'idle') return behavior;
   return ai.pattern || AI_PATTERNS.WALK;
 }
 
-function runBehaviorWithRaritySpeed(pattern, entity, ai, ctx) {
+function multiplyProfileValue(ctx, key) {
+  return (ctx.personality?.[key] || 1) * (ctx.rarity?.[key] || 1) * (ctx.species?.[key] || 1);
+}
+
+function runBehaviorWithContextSpeed(pattern, entity, ai, ctx) {
   const originalSpeed = entity.grade?.speed;
-  const raritySpeed = ctx.rarity?.speed || 1;
+  const speedBoost = multiplyProfileValue(ctx, 'speed');
 
   if (entity.grade && Number.isFinite(originalSpeed)) {
-    entity.grade.speed = originalSpeed * raritySpeed;
+    entity.grade.speed = originalSpeed * speedBoost;
   }
 
   runBehavior(pattern, entity, ai, ctx);
@@ -97,34 +112,33 @@ export function updateInsectAI(entity, context = {}) {
   const random = typeof context.random === 'function' ? context.random : Math.random;
   const personalityContext = applyPersonalityContext(ai, context);
   const rarityContext = applyRarityContext(entity, personalityContext);
-  const personality = rarityContext.personality;
-  const rarity = rarityContext.rarity;
+  const speciesContext = applySpeciesContext(entity, rarityContext);
 
   entity.drift = Number.isFinite(entity.drift) ? entity.drift : ai.phase;
-  entity.drift += 0.012 * (personality.drift || 1) * (rarity.drift || 1);
+  entity.drift += 0.012 * multiplyProfileValue(speciesContext, 'drift');
   ai.timer += context.dt || 1;
 
   const p = playerDelta(entity, player);
   const d = Math.hypot(p.x, p.y);
-  const pattern = resolvePattern(entity, ai);
+  const pattern = resolvePattern(entity, ai, speciesContext.species);
 
-  runBehaviorWithRaritySpeed(pattern, entity, ai, {
-    ...rarityContext,
+  runBehaviorWithContextSpeed(pattern, entity, ai, {
+    ...speciesContext,
     player,
     random,
     distanceToPlayer: d,
     deltaToPlayer: p,
   });
 
-  const signalRange = 130 * (rarity.signalRange || 1);
-  const signalRate = 0.006 * (personality.signalChance || 1) * (rarity.signalChance || 1);
+  const signalRange = 130 * multiplyProfileValue(speciesContext, 'signalRange');
+  const signalRate = 0.006 * multiplyProfileValue(speciesContext, 'signalChance');
 
   if (!entity.signal && d < signalRange && random() < signalRate) {
     entity.signal = true;
   }
 
-  const shyFleeRate = 0.012 * (personality.fleeChance || 1) * (rarity.fleeChance || 1);
-  const fleeDistance = 40 * (personality.fleeDistance || 1) * (rarity.fleeDistance || 1);
+  const shyFleeRate = 0.012 * multiplyProfileValue(speciesContext, 'fleeChance');
+  const fleeDistance = 40 * multiplyProfileValue(speciesContext, 'fleeDistance');
 
   if (d < 80 && entity.mood === 'shy' && random() < shyFleeRate) {
     const away = Math.atan2(p.y, p.x);
