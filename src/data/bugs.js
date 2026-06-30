@@ -1,16 +1,21 @@
-export const ASSET_BASE = 'https://raw.githubusercontent.com/HESEB/buget/main/assets/';
+export const ASSET_PATHS = {
+  local: './assets/',
+  fallback: 'https://raw.githubusercontent.com/HESEB/buget/main/assets/'
+};
+
+export const ASSET_BASE = ASSET_PATHS.fallback;
 
 export const BUGS = [
-  { id:'ant', name:'개미', file:'ant.png', emoji:'🐜', behavior:'walk' },
-  { id:'cabbage', name:'배추흰나비', file:'cabbage_butterfly.png', emoji:'🦋', behavior:'flutter' },
-  { id:'blueband', name:'청띠신선나비', file:'blue_band_butterfly.png', emoji:'🦋', behavior:'flutter' },
-  { id:'blackyellow', name:'검노랑나비', file:'black_yellow_butterfly.png', emoji:'🦋', behavior:'flutter' },
-  { id:'dragonfly', name:'잠자리', file:'brown_dragonfly.png', emoji:'🪰', behavior:'dart' },
-  { id:'diving', name:'물방개', file:'diving_beetle.png', emoji:'🪲', behavior:'walk' },
-  { id:'firefly', name:'반딧불이', file:'firefly.png', emoji:'✨', behavior:'glow' },
-  { id:'hornet', name:'장수말벌', file:'giant_hornet.png', emoji:'🐝', behavior:'buzz' },
-  { id:'waterbug', name:'물장군', file:'giant_water_bug.png', emoji:'🪲', behavior:'walk' },
-  { id:'cricket', name:'귀뚜라미', file:'cricket.png', emoji:'🦗', behavior:'jump' }
+  { id:'ant', name:'개미', file:'ant.png', emoji:'🐜', behavior:'walk', habitat:['city','forest'] },
+  { id:'cabbage', name:'배추흰나비', file:'cabbage_butterfly.png', emoji:'🦋', behavior:'flutter', habitat:['field','park'] },
+  { id:'blueband', name:'청띠신선나비', file:'blue_band_butterfly.png', emoji:'🦋', behavior:'flutter', habitat:['forest','park'] },
+  { id:'blackyellow', name:'검노랑나비', file:'black_yellow_butterfly.png', emoji:'🦋', behavior:'flutter', habitat:['forest','field'] },
+  { id:'dragonfly', name:'잠자리', file:'brown_dragonfly.png', emoji:'🪰', behavior:'dart', habitat:['river','field'] },
+  { id:'diving', name:'물방개', file:'diving_beetle.png', emoji:'🪲', behavior:'walk', habitat:['river'] },
+  { id:'firefly', name:'반딧불이', file:'firefly.png', emoji:'✨', behavior:'glow', habitat:['forest','river'] },
+  { id:'hornet', name:'장수말벌', file:'giant_hornet.png', emoji:'🐝', behavior:'buzz', habitat:['forest'] },
+  { id:'waterbug', name:'물장군', file:'giant_water_bug.png', emoji:'🪲', behavior:'walk', habitat:['river'] },
+  { id:'cricket', name:'귀뚜라미', file:'cricket.png', emoji:'🦗', behavior:'jump', habitat:['field','city'] }
 ];
 
 export const GRADES = [
@@ -19,6 +24,7 @@ export const GRADES = [
   { name:'노랑', color:'#ffe45c', pts:18, rate:.68, speed:1.1 },
   { name:'초록', color:'#43d96b', pts:24, rate:.65, speed:1.15 },
   { name:'파랑', color:'#4fb2ff', pts:32, rate:.62, speed:1.22 },
+  { name:'남색', color:'#4967ff', pts:42, rate:.58, speed:1.3 },
   { name:'보라', color:'#a573ed', pts:56, rate:.54, speed:1.4 },
   { name:'실버', color:'#d8e3ee', pts:76, rate:.50, speed:1.5 },
   { name:'골드', color:'#ffd166', pts:110, rate:.46, speed:1.6 },
