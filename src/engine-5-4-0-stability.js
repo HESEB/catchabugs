@@ -33,6 +33,7 @@ function normalizeModalLabels() {
 function tick() {
   loadModule('engine541MenuStateScript', 'src/engine-5-4-1-menu-state.js');
   loadModule('engine542BugHoleBackScript', 'src/engine-5-4-2-bughole-back-fix.js');
+  loadModule('engine543MenuStateFixScript', 'src/engine-5-4-3-menu-state-fix.js');
   injectStableStyle();
   normalizeInteractiveNodes();
   normalizeModalLabels();
