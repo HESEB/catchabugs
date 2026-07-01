@@ -4,41 +4,28 @@ function $(selector) { return document.querySelector(selector); }
 function modal() { return $('#modal'); }
 function body() { return $('#modalBody'); }
 function safeParse(raw) { try { return raw ? JSON.parse(raw) : null; } catch { return null; } }
-function loadHistory() { return safeParse(sessionStorage.getItem(MODAL_HISTORY_KEY)) || []; }
 function saveHistory(stack) { sessionStorage.setItem(MODAL_HISTORY_KEY, JSON.stringify(stack.slice(-16))); }
 function closeModal() { const m = modal(); if (m) m.style.display = 'none'; saveHistory([]); }
-function stripGuard(html) {
-  const tmp = document.createElement('div');
-  tmp.innerHTML = html || '';
-  tmp.querySelectorAll('#modalNavGuardBar,#modalNavGuardStyle,.menuNavRow').forEach((node) => node.remove());
-  return tmp.innerHTML;
-}
-function captureContent() {
-  const b = body();
-  if (!b) return '';
-  return stripGuard(b.innerHTML);
-}
+function clickHub(id) { const btn = document.getElementById(`menuHub-${id}`); if (btn) { btn.click(); return true; } return false; }
 function restorePrevious() {
   const b = body();
-  const m = modal();
-  if (!b || !m) { closeModal(); return; }
-  const current = captureContent();
-  let stack = loadHistory().map(stripGuard).filter(Boolean);
-  while (stack.length && stack[stack.length - 1] === current) stack.pop();
-  const previous = stack.pop();
-  saveHistory(stack);
-  if (!previous) { closeModal(); return; }
-  b.innerHTML = previous;
-  m.style.display = 'block';
-  setTimeout(() => { ensureNavBar(); wireDelegatedButtons(); }, 0);
-}
-function pushCurrent(dedupe = true) {
-  const html = captureContent();
-  if (!html) return;
-  const stack = loadHistory().map(stripGuard).filter(Boolean);
-  if (dedupe && stack[stack.length - 1] === html) return;
-  stack.push(html);
-  saveHistory(stack);
+  if (!b) { closeModal(); return; }
+  const title = (b.querySelector('.modalGuardTitle')?.textContent || b.querySelector('.menuHubHeader h2')?.textContent || b.querySelector('h2')?.textContent || '').replace(/\s+/g, ' ');
+  const text = (b.textContent || '').replace(/\s+/g, ' ');
+  if (title.includes('탐험기록') || title.includes('도감기록') || text.includes('탐험기록 없음') || text.includes('지역정보')) {
+    if (clickHub('note')) return;
+  }
+  if (title.includes('퀘스트') || title.includes('업적') || title.includes('칭호')) {
+    if (clickHub('quest')) return;
+  }
+  if (title.includes('개발자모드') || title.includes('사운드') || title.includes('게임정보') || text.includes('NPC 테스트')) {
+    if (clickHub('settings')) return;
+  }
+  if (title.includes('BUG HOLE') || title.includes('귀환') || title.includes('배낭') || title.includes('연구소')) {
+    closeModal();
+    return;
+  }
+  closeModal();
 }
 function injectStyle() {
   if ($('#modalNavGuardStyle')) return;
@@ -114,8 +101,8 @@ function wireDelegatedButtons() {
     }
     if (panelButton) {
       const panel = panelButton.dataset.panel;
-      if (panel === 'noteExplore') document.querySelector('#menuHub-note')?.click();
-      if (panel === 'developer') document.querySelector('#menuHub-settings')?.click();
+      if (panel === 'noteExplore') clickHub('note');
+      if (panel === 'developer') clickHub('settings');
     }
   });
 }
@@ -126,9 +113,6 @@ function patchModalOpen() {
   b.dataset.modalNavGuardObserver = 'on';
   const observer = new MutationObserver(() => {
     if (m.style.display !== 'none' && b.innerHTML.trim()) {
-      const current = captureContent();
-      const stack = loadHistory();
-      if (current && stripGuard(stack[stack.length - 1] || '') !== current) pushCurrent(true);
       setTimeout(() => { ensureNavBar(); wireDelegatedButtons(); }, 0);
     }
   });
