@@ -59,49 +59,18 @@ function normalizeModalNav() {
   if (back) {
     back.textContent = '← 뒤로';
     back.dataset.engine533Label = 'on';
-    if (back.dataset.engine533Back !== 'on') {
-      back.dataset.engine533Back = 'on';
-      back.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
-        const body = $('#modalBody');
-        const text = body?.textContent || '';
-        if (text.includes('탐험기록') || text.includes('도감기록')) { document.getElementById('menuHub-note')?.click(); return; }
-        if (text.includes('개발자모드') || text.includes('사운드') || text.includes('게임정보')) { document.getElementById('menuHub-settings')?.click(); return; }
-        if (text.includes('퀘스트') || text.includes('업적') || text.includes('칭호')) { document.getElementById('menuHub-quest')?.click(); return; }
-        closeModal();
-      }, true);
-    }
   }
   if (close) {
     close.textContent = '✕ 닫기';
     close.dataset.engine533Label = 'on';
-    if (close.dataset.engine533Close !== 'on') {
-      close.dataset.engine533Close = 'on';
-      close.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
-        closeModal();
-      }, true);
-    }
   }
 }
-function addNpcDevButtons() {
+function removeFloatingNpcDevTools() {
   const body = $('#modalBody');
-  if (!body || !body.textContent.includes('개발자모드')) return;
-  if ($('#npcDevTools')) return;
-  const panel = document.createElement('div');
-  panel.id = 'npcDevTools';
-  panel.className = 'devPanel';
-  panel.innerHTML = `<h3>NPC 테스트</h3><div class="devActions"><button id="devSpawnNpc">근처 NPC 생성</button><button id="devSpawnHiddenNpc">근처 미확인 신호 생성</button><button id="devSpawnMerchant">상인 생성</button><button id="devSpawnCollector">수집가 생성</button></div>`;
-  const sheet = body.querySelector('.menuHubSheet') || body.firstElementChild || body;
-  sheet.appendChild(panel);
-  $('#devSpawnNpc')?.addEventListener('click', () => { window.CATCHABUGS_RANDOM_NPC?.spawnVisible?.(); toast('근처 NPC 생성'); });
-  $('#devSpawnHiddenNpc')?.addEventListener('click', () => { window.CATCHABUGS_RANDOM_NPC?.spawnHidden?.(); toast('근처 미확인 신호 생성'); });
-  $('#devSpawnMerchant')?.addEventListener('click', () => { window.CATCHABUGS_RANDOM_NPC?.spawnMerchant?.(); toast('떠돌이 상인 생성'); });
-  $('#devSpawnCollector')?.addEventListener('click', () => { window.CATCHABUGS_RANDOM_NPC?.spawnCollector?.(); toast('표본 수집가 생성'); });
+  const tools = $('#npcDevTools');
+  if (!body || !tools) return;
+  const title = body.querySelector('.menuHubHeader h2')?.textContent || body.querySelector('.modalGuardTitle')?.textContent || '';
+  if (!title.includes('개발자모드')) tools.remove();
 }
 function tick() {
   throttleNpcRaf();
@@ -110,7 +79,7 @@ function tick() {
   const compass = $('#compassPanel');
   if (compass) compass.style.setProperty('display', 'none', 'important');
   normalizeModalNav();
-  addNpcDevButtons();
+  removeFloatingNpcDevTools();
   setTimeout(tick, 300);
 }
 
