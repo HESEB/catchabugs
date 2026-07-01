@@ -5,35 +5,37 @@ function modal() { return $('#modal'); }
 function body() { return $('#modalBody'); }
 function safeParse(raw) { try { return raw ? JSON.parse(raw) : null; } catch { return null; } }
 function loadHistory() { return safeParse(sessionStorage.getItem(MODAL_HISTORY_KEY)) || []; }
-function saveHistory(stack) { sessionStorage.setItem(MODAL_HISTORY_KEY, JSON.stringify(stack.slice(-12))); }
+function saveHistory(stack) { sessionStorage.setItem(MODAL_HISTORY_KEY, JSON.stringify(stack.slice(-16))); }
 function closeModal() { const m = modal(); if (m) m.style.display = 'none'; saveHistory([]); }
+function stripGuard(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html || '';
+  tmp.querySelectorAll('#modalNavGuardBar,#modalNavGuardStyle,.menuNavRow').forEach((node) => node.remove());
+  return tmp.innerHTML;
+}
 function captureContent() {
   const b = body();
   if (!b) return '';
-  const clone = b.cloneNode(true);
-  clone.querySelectorAll('#modalNavGuardBar,#modalNavGuardStyle').forEach((node) => node.remove());
-  clone.querySelectorAll('.menuNavRow').forEach((node) => node.remove());
-  return clone.innerHTML;
+  return stripGuard(b.innerHTML);
 }
 function restorePrevious() {
-  // 이전 HTML을 그대로 복원하면 각 메뉴의 onclick이 사라져 먹통이 되므로,
-  // 안전하게 최상위 메뉴 허브로 돌아가도록 처리한다.
   const b = body();
-  if (!b) { closeModal(); return; }
-  const text = b.textContent || '';
-  const modalApi = window.CATCHABUGS_MODAL_NAV;
-  if (text.includes('호박사') || text.includes('나상인') || text.includes('연구소')) {
-    window.CATCHABUGS_LAB?.open?.();
-    return;
-  }
-  if (text.includes('배낭')) { window.CATCHABUGS_BACKPACK?.open?.(); return; }
-  if (text.includes('BUG HOLE')) { window.CATCHABUGS_BUG_HOLE?.open?.(); return; }
-  closeModal();
+  const m = modal();
+  if (!b || !m) { closeModal(); return; }
+  const current = captureContent();
+  let stack = loadHistory().map(stripGuard).filter(Boolean);
+  while (stack.length && stack[stack.length - 1] === current) stack.pop();
+  const previous = stack.pop();
+  saveHistory(stack);
+  if (!previous) { closeModal(); return; }
+  b.innerHTML = previous;
+  m.style.display = 'block';
+  setTimeout(() => { ensureNavBar(); wireDelegatedButtons(); }, 0);
 }
 function pushCurrent(dedupe = true) {
   const html = captureContent();
   if (!html) return;
-  const stack = loadHistory();
+  const stack = loadHistory().map(stripGuard).filter(Boolean);
   if (dedupe && stack[stack.length - 1] === html) return;
   stack.push(html);
   saveHistory(stack);
@@ -43,10 +45,9 @@ function injectStyle() {
   const style = document.createElement('style');
   style.id = 'modalNavGuardStyle';
   style.textContent = `
-    #modalNavGuardBar{position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-2px -2px 10px;padding:4px 0 9px;background:linear-gradient(180deg,#fff 82%,#ffffff00);backdrop-filter:blur(6px)}
-    #modalNavGuardBar button{border:0;border-radius:999px;min-width:74px;height:34px;padding:0 12px;font-size:12px;font-weight:1000;background:#07111e;color:white;box-shadow:0 6px 14px #0001}
+    #modalNavGuardBar{position:sticky;top:0;z-index:140;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-2px -2px 10px;padding:4px 0 9px;background:linear-gradient(180deg,#fff 82%,#ffffff00);backdrop-filter:blur(6px);pointer-events:auto}
+    #modalNavGuardBar button{border:0;border-radius:999px;min-width:74px;height:34px;padding:0 12px;font-size:12px;font-weight:1000;background:#07111e;color:white;box-shadow:0 6px 14px #0001;pointer-events:auto;touch-action:manipulation}
     #modalNavGuardBar button[data-modal-back]{background:#00000012;color:#07111e}
-    #modalNavGuardBar button:disabled{opacity:.25}
     #modalNavGuardBar .modalGuardTitle{flex:1;text-align:center;font-size:12px;font-weight:1000;color:#0008;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     #modal .box{position:relative}
     #closeModal{display:none!important}
@@ -71,7 +72,7 @@ function normalizeExistingButtons() {
   if (!b) return;
   b.querySelectorAll('.menuNavRow').forEach((row) => { row.style.display = 'none'; });
   b.querySelectorAll('[data-menu-close]').forEach((button) => { button.textContent = '✕ 닫기'; button.onclick = closeModal; });
-  b.querySelectorAll('[data-menu-back]').forEach((button) => { button.textContent = '← 뒤로'; });
+  b.querySelectorAll('[data-menu-back]').forEach((button) => { button.textContent = '← 뒤로'; button.onclick = restorePrevious; });
   b.querySelectorAll('button').forEach((button) => {
     const text = (button.textContent || '').trim();
     if (text === '게임으로') { button.textContent = '✕ 닫기'; button.onclick = closeModal; }
@@ -99,6 +100,25 @@ function ensureNavBar() {
   if (back) back.onclick = restorePrevious;
   if (close) close.onclick = closeModal;
 }
+function wireDelegatedButtons() {
+  const b = body();
+  if (!b || b.dataset.modalNavDelegated === 'on') return;
+  b.dataset.modalNavDelegated = 'on';
+  b.addEventListener('click', (event) => {
+    const targetButton = event.target.closest?.('[data-target]');
+    const panelButton = event.target.closest?.('[data-panel]');
+    if (targetButton) {
+      const id = targetButton.dataset.target;
+      const target = document.getElementById(id);
+      if (target) { closeModal(); setTimeout(() => target.click(), 20); }
+    }
+    if (panelButton) {
+      const panel = panelButton.dataset.panel;
+      if (panel === 'noteExplore') document.querySelector('#menuHub-note')?.click();
+      if (panel === 'developer') document.querySelector('#menuHub-settings')?.click();
+    }
+  });
+}
 function patchModalOpen() {
   const m = modal();
   const b = body();
@@ -108,16 +128,16 @@ function patchModalOpen() {
     if (m.style.display !== 'none' && b.innerHTML.trim()) {
       const current = captureContent();
       const stack = loadHistory();
-      if (current && stack[stack.length - 1] !== current) pushCurrent(true);
-      setTimeout(ensureNavBar, 0);
+      if (current && stripGuard(stack[stack.length - 1] || '') !== current) pushCurrent(true);
+      setTimeout(() => { ensureNavBar(); wireDelegatedButtons(); }, 0);
     }
   });
   observer.observe(b, { childList: true, subtree: true });
-  const modalObserver = new MutationObserver(() => setTimeout(ensureNavBar, 0));
+  const modalObserver = new MutationObserver(() => setTimeout(() => { ensureNavBar(); wireDelegatedButtons(); }, 0));
   modalObserver.observe(m, { attributes: true, attributeFilter: ['style', 'class'] });
 }
 function patchCloseButton() { const close = $('#closeModal'); if (close) close.onclick = closeModal; }
-function init() { injectStyle(); patchCloseButton(); patchModalOpen(); setInterval(() => { patchCloseButton(); ensureNavBar(); }, 900); }
+function init() { injectStyle(); patchCloseButton(); patchModalOpen(); wireDelegatedButtons(); setInterval(() => { patchCloseButton(); ensureNavBar(); wireDelegatedButtons(); }, 900); }
 window.CATCHABUGS_MODAL_NAV = { close: closeModal, back: restorePrevious, ensure: ensureNavBar, reset(){ saveHistory([]); } };
 document.addEventListener('DOMContentLoaded', () => setTimeout(init, 100));
 setTimeout(init, 500);
