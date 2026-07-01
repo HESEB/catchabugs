@@ -4,6 +4,7 @@ const RETURN_KEY = 'catchabugs.returnStones.v1';
 
 let compassPanelOpen = false;
 let compassHeading = 0;
+let backCaptureBound = false;
 
 function $(selector) { return document.querySelector(selector); }
 function safeParse(raw) { try { return raw ? JSON.parse(raw) : null; } catch { return null; } }
@@ -97,7 +98,7 @@ function patchRadarCompassClick() {
   if (!radar || radar.dataset.engine522Compass === 'on') return;
   radar.dataset.engine522Compass = 'on';
   radar.addEventListener('click', (event) => {
-    if (event.target.closest('.radar-blip') || event.target.closest('#bugHoleMarker')) return;
+    if (event.target.closest('.radar-blip') || event.target.closest('#bugHoleMarker') || event.target.closest('#radarCompassToggle')) return;
     event.preventDefault();
     event.stopPropagation();
     toggleCompassPanel();
@@ -199,30 +200,32 @@ function closeModalOnly() {
   const modal = $('#modal');
   if (modal) modal.style.display = 'none';
 }
+function bindBackCapture() {
+  if (backCaptureBound) return;
+  backCaptureBound = true;
+  document.addEventListener('click', (event) => {
+    const back = event.target.closest?.('[data-menu-back]');
+    const close = event.target.closest?.('[data-menu-close]');
+    if (!back && !close) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+    closeModalOnly();
+    if (back) toast('게임 화면으로 돌아왔습니다.');
+  }, true);
+}
 function patchModalBack() {
   const modal = $('#modal');
   const close = $('#closeModal');
   if (!modal) return;
+  bindBackCapture();
   if (close) close.onclick = closeModalOnly;
   document.querySelectorAll('[data-menu-back]').forEach((button) => {
-    if (button.dataset.engine522Back === 'on') return;
     button.dataset.engine522Back = 'on';
-    button.onclick = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (event.stopImmediatePropagation) event.stopImmediatePropagation();
-      closeModalOnly();
-      toast('게임 화면으로 돌아왔습니다.');
-    };
     button.textContent = '← 게임으로';
   });
   document.querySelectorAll('[data-menu-close]').forEach((button) => {
-    if (button.dataset.engine522Close === 'on') return;
     button.dataset.engine522Close = 'on';
-    button.onclick = (event) => {
-      event.preventDefault();
-      closeModalOnly();
-    };
   });
 }
 
