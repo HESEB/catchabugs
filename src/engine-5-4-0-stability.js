@@ -1,10 +1,10 @@
 function $(selector) { return document.querySelector(selector); }
-function loadMenuStateTracker() {
-  if (document.getElementById('engine541MenuStateScript')) return;
+function loadModule(id, src) {
+  if (document.getElementById(id)) return;
   const script = document.createElement('script');
-  script.id = 'engine541MenuStateScript';
+  script.id = id;
   script.type = 'module';
-  script.src = 'src/engine-5-4-1-menu-state.js';
+  script.src = src;
   document.head.appendChild(script);
 }
 function injectStableStyle() {
@@ -31,7 +31,8 @@ function normalizeModalLabels() {
   if (close) close.textContent = '✕ 닫기';
 }
 function tick() {
-  loadMenuStateTracker();
+  loadModule('engine541MenuStateScript', 'src/engine-5-4-1-menu-state.js');
+  loadModule('engine542BugHoleBackScript', 'src/engine-5-4-2-bughole-back-fix.js');
   injectStableStyle();
   normalizeInteractiveNodes();
   normalizeModalLabels();
