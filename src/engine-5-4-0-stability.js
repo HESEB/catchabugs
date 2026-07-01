@@ -31,10 +31,7 @@ function normalizeModalLabels() {
   if (close) close.textContent = '✕ 닫기';
 }
 function tick() {
-  loadModule('engine541MenuStateScript', 'src/engine-5-4-1-menu-state.js');
-  loadModule('engine542BugHoleBackScript', 'src/engine-5-4-2-bughole-back-fix.js');
-  loadModule('engine543MenuStateFixScript', 'src/engine-5-4-3-menu-state-fix.js');
-  loadModule('engine549SettingsBackScript', 'src/engine-5-4-9-settings-back-fix.js');
+  loadModule('engine550MenuNavigationScript', 'src/engine-5-5-0-menu-navigation.js');
   injectStableStyle();
   normalizeInteractiveNodes();
   normalizeModalLabels();
