@@ -1,4 +1,6 @@
 function $(selector) { return document.querySelector(selector); }
+let npcRafPatched = false;
+let lastNpcFrame = 0;
 function toast(message) {
   const node = $('#toast');
   if (!node) return;
@@ -10,6 +12,24 @@ function toast(message) {
 function closeModal() {
   const modal = $('#modal');
   if (modal) modal.style.display = 'none';
+}
+function throttleNpcRaf() {
+  if (npcRafPatched) return;
+  npcRafPatched = true;
+  const nativeRaf = window.requestAnimationFrame.bind(window);
+  window.requestAnimationFrame = function(callback) {
+    const source = String(callback || '');
+    const isNpcLoop = source.includes('renderNpcRadar') && source.includes('maybeSpawn');
+    if (!isNpcLoop) return nativeRaf(callback);
+    return nativeRaf((time) => {
+      if (time - lastNpcFrame >= 220) {
+        lastNpcFrame = time;
+        callback(time);
+      } else {
+        setTimeout(() => nativeRaf(callback), Math.max(80, 220 - (time - lastNpcFrame)));
+      }
+    });
+  };
 }
 function ensureMobileStyle() {
   if ($('#engine533MobileStyle')) return;
@@ -38,6 +58,7 @@ function normalizeModalNav() {
   const close = bar.querySelector('[data-modal-close]');
   if (back) {
     back.textContent = '← 뒤로';
+    back.dataset.engine533Label = 'on';
     if (back.dataset.engine533Back !== 'on') {
       back.dataset.engine533Back = 'on';
       back.addEventListener('click', (event) => {
@@ -46,24 +67,16 @@ function normalizeModalNav() {
         if (event.stopImmediatePropagation) event.stopImmediatePropagation();
         const body = $('#modalBody');
         const text = body?.textContent || '';
-        if (text.includes('탐험기록') || text.includes('도감기록')) {
-          document.getElementById('menuHub-note')?.click();
-          return;
-        }
-        if (text.includes('개발자모드') || text.includes('사운드') || text.includes('게임정보')) {
-          document.getElementById('menuHub-settings')?.click();
-          return;
-        }
-        if (text.includes('퀘스트') || text.includes('업적') || text.includes('칭호')) {
-          document.getElementById('menuHub-quest')?.click();
-          return;
-        }
+        if (text.includes('탐험기록') || text.includes('도감기록')) { document.getElementById('menuHub-note')?.click(); return; }
+        if (text.includes('개발자모드') || text.includes('사운드') || text.includes('게임정보')) { document.getElementById('menuHub-settings')?.click(); return; }
+        if (text.includes('퀘스트') || text.includes('업적') || text.includes('칭호')) { document.getElementById('menuHub-quest')?.click(); return; }
         closeModal();
       }, true);
     }
   }
   if (close) {
     close.textContent = '✕ 닫기';
+    close.dataset.engine533Label = 'on';
     if (close.dataset.engine533Close !== 'on') {
       close.dataset.engine533Close = 'on';
       close.addEventListener('click', (event) => {
@@ -91,6 +104,7 @@ function addNpcDevButtons() {
   $('#devSpawnCollector')?.addEventListener('click', () => { window.CATCHABUGS_RANDOM_NPC?.spawnCollector?.(); toast('표본 수집가 생성'); });
 }
 function tick() {
+  throttleNpcRaf();
   ensureMobileStyle();
   forceDebugOff();
   const compass = $('#compassPanel');
