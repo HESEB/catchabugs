@@ -1,30 +1,28 @@
 const MODAL_HISTORY_KEY = 'catchabugs.modalNav.v1';
+const MENU_STATE_KEY = 'catchabugs.menuState.v541';
 
 function $(selector) { return document.querySelector(selector); }
 function modal() { return $('#modal'); }
 function body() { return $('#modalBody'); }
 function safeParse(raw) { try { return raw ? JSON.parse(raw) : null; } catch { return null; } }
 function saveHistory(stack) { sessionStorage.setItem(MODAL_HISTORY_KEY, JSON.stringify(stack.slice(-16))); }
-function closeModal() { const m = modal(); if (m) m.style.display = 'none'; saveHistory([]); }
+function clearMenuState() { sessionStorage.removeItem(MENU_STATE_KEY); const b = body(); if (b) delete b.dataset.menuState; }
+function closeModal() { const m = modal(); if (m) m.style.display = 'none'; saveHistory([]); clearMenuState(); }
 function clickHub(id) { const btn = document.getElementById(`menuHub-${id}`); if (btn) { btn.click(); return true; } return false; }
-function restorePrevious() {
+function readMenuState() {
   const b = body();
-  if (!b) { closeModal(); return; }
-  const title = (b.querySelector('.modalGuardTitle')?.textContent || b.querySelector('.menuHubHeader h2')?.textContent || b.querySelector('h2')?.textContent || '').replace(/\s+/g, ' ');
-  const text = (b.textContent || '').replace(/\s+/g, ' ');
-  if (title.includes('탐험기록') || title.includes('도감기록') || text.includes('탐험기록 없음') || text.includes('지역정보')) {
-    if (clickHub('note')) return;
+  const fromDataset = safeParse(b?.dataset?.menuState || null);
+  const fromSession = safeParse(sessionStorage.getItem(MENU_STATE_KEY));
+  return fromDataset || fromSession || null;
+}
+function restorePrevious() {
+  const state = readMenuState();
+  if (state?.parent) {
+    if (clickHub(state.parent)) return;
   }
-  if (title.includes('퀘스트') || title.includes('업적') || title.includes('칭호')) {
-    if (clickHub('quest')) return;
-  }
-  if (title.includes('개발자모드') || title.includes('사운드') || title.includes('게임정보') || text.includes('NPC 테스트')) {
-    if (clickHub('settings')) return;
-  }
-  if (title.includes('BUG HOLE') || title.includes('귀환') || title.includes('배낭') || title.includes('연구소')) {
-    closeModal();
-    return;
-  }
+  if (state?.current === 'noteExplore' || state?.current === 'legacyDex') { if (clickHub('note')) return; }
+  if (state?.current === 'developer' || state?.current === 'settingsChild' || state?.current === 'openSave') { if (clickHub('settings')) return; }
+  if (state?.current === 'openQuest' || state?.current === 'openAchievement' || state?.current === 'openBadgeTitle' || state?.current === 'questChild') { if (clickHub('quest')) return; }
   closeModal();
 }
 function injectStyle() {
@@ -97,7 +95,7 @@ function wireDelegatedButtons() {
     if (targetButton) {
       const id = targetButton.dataset.target;
       const target = document.getElementById(id);
-      if (target) { closeModal(); setTimeout(() => target.click(), 20); }
+      if (target) { setTimeout(() => target.click(), 20); }
     }
     if (panelButton) {
       const panel = panelButton.dataset.panel;
@@ -122,6 +120,6 @@ function patchModalOpen() {
 }
 function patchCloseButton() { const close = $('#closeModal'); if (close) close.onclick = closeModal; }
 function init() { injectStyle(); patchCloseButton(); patchModalOpen(); wireDelegatedButtons(); setInterval(() => { patchCloseButton(); ensureNavBar(); wireDelegatedButtons(); }, 900); }
-window.CATCHABUGS_MODAL_NAV = { close: closeModal, back: restorePrevious, ensure: ensureNavBar, reset(){ saveHistory([]); } };
+window.CATCHABUGS_MODAL_NAV = { close: closeModal, back: restorePrevious, ensure: ensureNavBar, reset(){ saveHistory([]); clearMenuState(); } };
 document.addEventListener('DOMContentLoaded', () => setTimeout(init, 100));
 setTimeout(init, 500);
