@@ -32,6 +32,8 @@ function normalizeModalLabels() {
 }
 function tick() {
   loadModule('engine550MenuNavigationScript', 'src/engine-5-5-0-menu-navigation.js');
+  loadModule('devModeSystemScript', 'src/dev-mode-system.js');
+  loadModule('radarCompassSystemScript', 'src/radar-compass-system.js');
   injectStableStyle();
   normalizeInteractiveNodes();
   normalizeModalLabels();
