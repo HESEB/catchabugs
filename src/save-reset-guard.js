@@ -17,7 +17,13 @@ const RESET_KEYS = [
   'catchabugs.modalNav.v1',
   'catchabugs.menuNav.v550',
   'catchabugs.menuNav.v560',
-  'catchabugs.menuState.v541'
+  'catchabugs.menuState.v541',
+  'catchabugs.dex.v1',
+  'catchabugs.dex.v2',
+  'catchabugs.diary.v1',
+  'catchabugs.album.v1',
+  'catchabugs.exploreLog.v1',
+  'catchabugs.researchNote.v1'
 ];
 function $(selector) { return document.querySelector(selector); }
 function toast(message) {
@@ -35,9 +41,16 @@ function clearPrefixedStorage(storage) {
     });
   } catch {}
 }
+function hardClearStorage() {
+  RESET_KEYS.forEach((key) => localStorage.removeItem(key));
+  RESET_KEYS.forEach((key) => sessionStorage.removeItem(key));
+  clearPrefixedStorage(localStorage);
+  clearPrefixedStorage(sessionStorage);
+}
 function cleanupRuntimeUi() {
   try { window.CATCHABUGS_RANDOM_NPC?.clear?.(); } catch {}
-  document.querySelectorAll('.fieldNpc,.npcRadarBlip,#npcLayer,#radarFallbackCompass,#devSystemDebugPanel,#engine539DebugPanel,#modalNavGuardBar').forEach((node) => node.remove());
+  try { window.CATCHABUGS_RADAR_COMPASS?.off?.(); } catch {}
+  document.querySelectorAll('.fieldNpc,.npcRadarBlip,#npcLayer,#radarFallbackCompass,#devSystemDebugPanel,#engine539DebugPanel,#modalNavGuardBar,#questLocalBackBar').forEach((node) => node.remove());
   const modal = $('#modal');
   if (modal) modal.style.display = 'none';
   const body = $('#modalBody');
@@ -48,13 +61,20 @@ function resetAllData() {
   if (!first) return;
   const second = window.confirm('마지막 확인입니다. 게임을 처음 상태로 되돌립니다. 진행할까요?');
   if (!second) return;
-  RESET_KEYS.forEach((key) => localStorage.removeItem(key));
-  RESET_KEYS.forEach((key) => sessionStorage.removeItem(key));
-  clearPrefixedStorage(localStorage);
-  clearPrefixedStorage(sessionStorage);
+  sessionStorage.setItem('catchabugs.reset.pending', '1');
+  hardClearStorage();
+  sessionStorage.setItem('catchabugs.reset.pending', '1');
   cleanupRuntimeUi();
   toast('데이터 초기화 완료. 새로고침합니다.');
   setTimeout(() => location.replace(location.pathname + '?reset=' + Date.now()), 800);
+}
+function clearOnResetBoot() {
+  const queryReset = location.search.includes('reset=');
+  const pending = sessionStorage.getItem('catchabugs.reset.pending') === '1';
+  if (!queryReset && !pending) return;
+  hardClearStorage();
+  sessionStorage.removeItem('catchabugs.reset.pending');
+  cleanupRuntimeUi();
 }
 function wireReset() {
   const button = $('#resetAllData');
@@ -63,6 +83,7 @@ function wireReset() {
   button.onclick = resetAllData;
 }
 function init() {
+  clearOnResetBoot();
   wireReset();
   const body = $('#modalBody');
   if (body && body.dataset.resetObserver !== 'on') {
@@ -70,6 +91,6 @@ function init() {
     new MutationObserver(() => setTimeout(wireReset, 0)).observe(body, { childList: true, subtree: true });
   }
 }
-window.CATCHABUGS_RESET = { resetAllData };
-document.addEventListener('DOMContentLoaded', () => setTimeout(init, 300));
-setTimeout(init, 900);
+window.CATCHABUGS_RESET = { resetAllData, hardClearStorage };
+document.addEventListener('DOMContentLoaded', () => setTimeout(init, 100));
+setTimeout(init, 500);
