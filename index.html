@@ -37,15 +37,21 @@
     </div>
     <div id="legacyControls" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;pointer-events:none" aria-hidden="true">
       <button id="openDex" class="mini" tabindex="-1">도감</button>
+      <button id="openDexReward" class="mini" tabindex="-1">도감보상</button>
       <button id="openQuest" class="mini" tabindex="-1">퀘스트</button>
       <button id="openAchievement" class="mini" tabindex="-1">업적</button>
+      <button id="openBadgeTitle" class="mini" tabindex="-1">칭호</button>
       <button id="openSave" class="mini" tabindex="-1">저장</button>
+      <button id="openWeather" class="mini" tabindex="-1">날씨</button>
+      <button id="openLab" class="mini" tabindex="-1">연구소</button>
+      <button id="openLegendary" class="mini" tabindex="-1">전설</button>
       <button id="diary" class="mini" tabindex="-1">일기</button>
       <button id="home" class="mini" tabindex="-1">BUG HOLE</button>
     </div>
     <div class="bottom menuHub">
       <button id="menuHub-note" class="mini menuHubBtn"><b>📖</b><span>연구노트</span></button>
       <button id="menuHub-quest" class="mini menuHubBtn"><b>📜</b><span>퀘스트</span></button>
+      <button id="menuHub-bag" class="mini menuHubBtn"><b>🎒</b><span>배낭</span></button>
       <button id="menuHub-return" class="mini menuHubBtn"><b>🌀</b><span>BUG HOLE</span></button>
       <button id="menuHub-settings" class="mini menuHubBtn"><b>⚙️</b><span>설정</span></button>
     </div>
@@ -98,6 +104,7 @@
   <script type="module" src="src/save-reset-guard.js"></script>
   <script type="module" src="src/dex-category-guard.js"></script>
   <script type="module" src="src/random-npc.js"></script>
+  <script type="module" src="src/npc-api-bridge.js"></script>
   <script type="module" src="src/engine-5-4-0-stability.js"></script>
 </body>
 </html>
