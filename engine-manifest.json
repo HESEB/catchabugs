@@ -1,165 +1,155 @@
 {
   "project": "CATCHA BUGS",
   "repository": "HESEB/catchabugs",
-  "engineBaseline": "8.0-runtime-cleanup",
-  "baselineCommit": "7471c811d1c5e6d9b95ac304133c2998958d0ed8",
-  "manifestCreatedAt": "2026-07-08",
-  "purpose": "Prevent patch pileup, duplicated runtime loaders, and accidental rollback to older engine behavior.",
+  "engineBaseline": "9.0-unified-core",
+  "previousBaseline": "8.0-runtime-cleanup",
+  "baselineCommit": "ac4e51a29b2973f0d2a53c748e406c9eea6f2eb2",
+  "manifestUpdatedAt": "2026-07-08",
+  "purpose": "Unify Engine 1.0 through 8.0 into one owner-based runtime standard without reloading old patch layers.",
   "runtimeRule": {
     "readThisFirst": true,
     "updateFromLatestMainOnly": true,
     "doNotRestoreOldPatchFiles": true,
     "oneFeatureOneOwner": true,
-    "noDuplicateDomOwners": true
+    "noDuplicateDomOwners": true,
+    "preserveCurrentIndexScriptList": true,
+    "mergeOldFeaturesIntoOwnersOnly": true
+  },
+  "engine9Principles": [
+    "Engine 9.0 is not another patch layer. It is the new project baseline.",
+    "Old features are included as migration candidates, not directly reloaded.",
+    "Every future feature must have one runtime owner.",
+    "index.html must never be replaced from an older snapshot.",
+    "Disabled runtime files are not deleted yet, but they must not be loaded without explicit migration."
+  ],
+  "featureCoverageFromEngine1To8": {
+    "engine1_initialExplorationCapture": ["src/main-radar.js", "src/data/bugs.js", "src/insect-ai.js"],
+    "engine2_saveQuestAchievement": ["src/save-system.js", "src/quest.js", "src/achievement.js", "src/save-reset-guard.js"],
+    "engine3_menuModal": ["src/menu-remaster.js", "src/main-radar.js"],
+    "engine4_bugHoleReturn": ["src/bug-hole-system.js", "src/bug-hole-markers.js", "src/return-discovery.js", "src/return-stones.js"],
+    "engine5_patchAccumulation": ["disabled: src/engine-5-4-0-stability.js", "active: src/radar-compass-system.js"],
+    "engine6_runtimeCleanup": ["index.html runtime list", "docs/engine-8-0-runtime-cleanup.md"],
+    "engine6_1_gps": ["src/gps-system.js"],
+    "engine6_2_explorerDex": ["src/radar-compass-system.js", "migration candidate: src/dex-grade-ledger.js"],
+    "engine7_visualGpsFeel": ["migration candidate: src/visual-polish-7.js", "active: src/gps-system.js"],
+    "engine7_1_gpsMapStability": ["src/gps-system.js", "src/radar-compass-system.js", "migration candidate: src/stable-map-region.js"],
+    "engine8_runtimeCleanup": ["engine-manifest.json", "docs/engine-history.md"],
+    "engine9_unifiedCore": ["src/engine-9-runtime.js", "engine-manifest.json", "docs/engine-9-0-unified-core.md"]
+  },
+  "runtimeOwners": {
+    "coreGameLoop": {
+      "owner": "src/main-radar.js",
+      "includes": ["player state", "map render", "radar", "bug spawn", "capture mini-game", "base dex", "quest/open/save hooks"],
+      "mustNotBeDuplicatedBy": ["src/region-remaster.js", "src/stable-map-region.js", "src/visual-polish-7.js"]
+    },
+    "gpsExplorerMode": {
+      "owner": "src/gps-system.js",
+      "includes": ["GPS permission", "watchPosition", "GPS HUD", "north-up movement"],
+      "rule": "GPS must not rotate movement by compass heading."
+    },
+    "compassRadarInfo": {
+      "owner": "src/radar-compass-system.js",
+      "includes": ["explorer toggle button", "radar compact info", "direction reference"],
+      "rule": "Compass is reference only unless a future map-engine explicitly owns rotation."
+    },
+    "bottomMenu": {
+      "owner": "src/menu-remaster.js",
+      "includes": ["research note", "quest", "backpack", "BUG HOLE", "settings"],
+      "rule": "Do not reintroduce modal-nav-guard or ui-cleanup as separate menu owners."
+    },
+    "bugHole": {
+      "owner": "src/bug-hole-system.js",
+      "assistants": ["src/bug-hole-markers.js", "src/return-discovery.js", "src/return-stones.js"],
+      "rule": "BUG HOLE must not capture unrelated global menu/back events."
+    },
+    "backpack": {
+      "owner": "src/backpack-system.js",
+      "includes": ["inventory UI", "bottom bag menu"]
+    },
+    "npc": {
+      "owner": "src/random-npc.js",
+      "assistants": ["src/npc-api-bridge.js", "src/npc-lab.js"],
+      "rule": "Bridge is temporary; long-term API belongs in random-npc.js."
+    },
+    "economy": {
+      "owner": "src/economy.js",
+      "assistants": ["src/economy-menu.js"]
+    },
+    "activeItems": {
+      "owner": "src/active-items.js",
+      "assistants": ["src/active-items-bridge.js"]
+    },
+    "saveReset": {
+      "owner": "src/save-reset-guard.js",
+      "rule": "Reset must include GPS/NPC/BUG HOLE/backpack data."
+    },
+    "legendary": {
+      "owner": "src/legendary-event.js",
+      "migrationCandidate": "src/legendary-dex-fix.js",
+      "rule": "Legendary dex improvements must be merged into a single legendary or dex owner, not reloaded as a fix layer."
+    },
+    "dexFuture": {
+      "ownerStatus": "not yet separated",
+      "currentBaseOwner": "src/main-radar.js",
+      "migrationCandidates": ["src/dex-grade-ledger.js", "src/dex-category-guard.js", "src/dex-reward.js"],
+      "rule": "If enhanced dex returns, create one dex-system.js or merge into main-radar.js openDex."
+    },
+    "visualFuture": {
+      "ownerStatus": "not yet separated",
+      "currentBaseOwner": "css/style.css and src/main-radar.js",
+      "migrationCandidate": "src/visual-polish-7.js",
+      "rule": "Visual polish must be merged into css/style.css or one visual-system.js, not loaded as broad override."
+    },
+    "engineRuntimeManifest": {
+      "owner": "src/engine-9-runtime.js",
+      "includes": ["runtime file list", "owner map", "window.CATCHABUGS_ENGINE"],
+      "rule": "This file must not mutate gameplay. It is a readable runtime manifest only."
+    }
   },
   "activeRuntimeFiles": [
-    {
-      "path": "src/main-radar.js",
-      "role": "Core game loop, player state, map render, radar, bug spawn, catch mini-game, base dex/quest/save hooks",
-      "owns": ["#map", "#bugs", "#radar", "#enc", "CATCHABUGS_GAME"],
-      "notes": "Primary core owner. Avoid creating patch files that repeatedly rewrite map, radar, or catch loop."
-    },
-    {
-      "path": "src/badge-title.js",
-      "role": "Badge and title UI/data",
-      "owns": ["openBadgeTitle", "badge/title state"],
-      "notes": "Keep title/badge logic here."
-    },
-    {
-      "path": "src/time-weather.js",
-      "role": "Time and weather state",
-      "owns": ["CATCHABUGS_TIME_WEATHER"],
-      "notes": "Does not own map rendering."
-    },
-    {
-      "path": "src/economy.js",
-      "role": "Economy resources and currency logic",
-      "owns": ["economy state"],
-      "notes": "Used by menu/equipment systems."
-    },
-    {
-      "path": "src/profile-system.js",
-      "role": "Profile HUD and player profile UI",
-      "owns": ["#profileHud"],
-      "notes": "Do not duplicate profile rendering elsewhere."
-    },
-    {
-      "path": "src/npc-lab.js",
-      "role": "NPC lab UI and lab-related interactions",
-      "owns": ["openLab", "NPC lab modal"],
-      "notes": "Research/lab logic belongs here."
-    },
-    {
-      "path": "src/legendary-event.js",
-      "role": "Legendary event discovery and encounter logic",
-      "owns": ["legendary event state"],
-      "notes": "Legendary dex should be integrated here or in a single dex owner, not separate fix layers."
-    },
-    {
-      "path": "src/return-discovery.js",
-      "role": "Return/Bug Hole discovery state",
-      "owns": ["return discovery state"],
-      "notes": "Works with BUG HOLE, but does not own menu navigation."
-    },
-    {
-      "path": "src/return-stones.js",
-      "role": "Return stone resources and interaction",
-      "owns": ["return stone state"],
-      "notes": "Resource feature only."
-    },
-    {
-      "path": "src/menu-remaster.js",
-      "role": "Bottom menu and main modal entry screens",
-      "owns": ["#menuHub-note", "#menuHub-quest", "#menuHub-bag", "#menuHub-return", "#menuHub-settings", "settings menu"],
-      "notes": "Menu screen owner. Do not reintroduce separate modal-nav guard unless integrated."
-    },
-    {
-      "path": "src/economy-menu.js",
-      "role": "Economy menu panels",
-      "owns": ["economy menu UI"],
-      "notes": "Only economy UI."
-    },
-    {
-      "path": "src/bug-hole-system.js",
-      "role": "BUG HOLE UI and installation/dismantle/progress logic",
-      "owns": ["BUG HOLE modal", "CATCHABUGS_BUG_HOLE"],
-      "notes": "Do not capture unrelated menu/back/close events."
-    },
-    {
-      "path": "src/bug-hole-markers.js",
-      "role": "BUG HOLE map markers",
-      "owns": ["bug hole markers"],
-      "notes": "Visual marker layer only."
-    },
-    {
-      "path": "src/active-items.js",
-      "role": "Active item data and bonuses",
-      "owns": ["CATCHABUGS_ACTIVE_ITEMS"],
-      "notes": "Bonus calculations should be read-only to other systems."
-    },
-    {
-      "path": "src/active-items-bridge.js",
-      "role": "Bridge active item bonuses into game systems",
-      "owns": ["active item bridge"],
-      "notes": "Bridge only. Do not duplicate full item logic."
-    },
-    {
-      "path": "src/backpack-system.js",
-      "role": "Backpack bottom menu and inventory UI",
-      "owns": ["#menuHub-bag", "backpack modal"],
-      "notes": "User approved 5 bottom menus including backpack."
-    },
-    {
-      "path": "src/save-reset-guard.js",
-      "role": "Save/reset cleanup and data reset protection",
-      "owns": ["reset all data behavior"],
-      "notes": "Reset should include GPS/NPC/BUG HOLE/backpack data where relevant."
-    },
-    {
-      "path": "src/random-npc.js",
-      "role": "Random NPC generation implementation",
-      "owns": ["random NPC state"],
-      "notes": "Should eventually own CATCHABUGS_RANDOM_NPC directly."
-    },
-    {
-      "path": "src/npc-api-bridge.js",
-      "role": "Fallback bridge for NPC API when random NPC API is unavailable",
-      "owns": ["CATCHABUGS_RANDOM_NPC fallback"],
-      "notes": "Temporary bridge. Prefer integrating API into random-npc.js later."
-    },
-    {
-      "path": "src/gps-system.js",
-      "role": "Mobile GPS/explorer mode position tracking",
-      "owns": ["CATCHABUGS_GPS", "GPS HUD", "GPS watchPosition"],
-      "notes": "GPS uses north-up world coordinates. It must not rotate movement by compass heading."
-    },
-    {
-      "path": "src/radar-compass-system.js",
-      "role": "Radar compact info and explorer mode toggle button",
-      "owns": ["#radarCompactInfo", "#radarCompassToggle", "CATCHABUGS_RADAR_COMPASS"],
-      "notes": "Compass is direction reference only. It must not rotate map/GPS by default."
-    }
+    "src/main-radar.js",
+    "src/badge-title.js",
+    "src/time-weather.js",
+    "src/economy.js",
+    "src/profile-system.js",
+    "src/npc-lab.js",
+    "src/legendary-event.js",
+    "src/return-discovery.js",
+    "src/return-stones.js",
+    "src/menu-remaster.js",
+    "src/economy-menu.js",
+    "src/bug-hole-system.js",
+    "src/bug-hole-markers.js",
+    "src/active-items.js",
+    "src/active-items-bridge.js",
+    "src/backpack-system.js",
+    "src/save-reset-guard.js",
+    "src/random-npc.js",
+    "src/npc-api-bridge.js",
+    "src/gps-system.js",
+    "src/radar-compass-system.js",
+    "src/engine-9-runtime.js"
   ],
   "disabledRuntimeFiles": [
     {
       "path": "src/region-remaster.js",
-      "reason": "Duplicate map/region styling and region behavior."
+      "reason": "Duplicate map/region styling and region behavior. If needed, migrate into main-radar.js or future map-engine.js."
     },
     {
       "path": "src/visual-polish-7.js",
-      "reason": "Visual layer caused additional DOM/style overrides. Reintegrate intentionally later."
+      "reason": "Useful visual ideas, but broad DOM/style override. Migrate intentionally into css/style.css or a single visual owner."
     },
     {
       "path": "src/stable-map-region.js",
-      "reason": "Map/region guard layer duplicated main map ownership."
+      "reason": "Duplicated map/region ownership. Migrate tile region logic into main-radar.js or future map-engine.js."
     },
     {
       "path": "src/dex-reward.js",
-      "reason": "Dex add-on disabled during runtime cleanup."
+      "reason": "Dex reward add-on disabled during owner cleanup."
     },
     {
       "path": "src/legendary-dex-fix.js",
-      "reason": "Legendary dex fix layer disabled; should be merged into single dex/legendary owner."
+      "reason": "Legendary dex fix layer disabled. Merge into legendary-event.js or dex-system.js."
     },
     {
       "path": "src/dex-category-guard.js",
@@ -167,19 +157,19 @@
     },
     {
       "path": "src/dex-grade-ledger.js",
-      "reason": "Dex grade lights disabled temporarily; should be reintegrated without overriding dex repeatedly."
+      "reason": "Grade lights are still desired, but must be integrated into one dex owner."
     },
     {
       "path": "src/modal-nav-guard.js",
-      "reason": "Modal navigation guard disabled to reduce menu/back ownership conflicts."
+      "reason": "Modal navigation ownership conflict."
     },
     {
       "path": "src/ui-cleanup.js",
-      "reason": "General cleanup layer disabled; too broad."
+      "reason": "General cleanup layer too broad."
     },
     {
       "path": "src/engine-5-4-0-stability.js",
-      "reason": "Old bootstrap loaded additional systems and revived patch pile behavior."
+      "reason": "Old bootstrap can revive patch pile behavior."
     }
   ],
   "currentRuntimeScriptsInIndexOrder": [
@@ -203,7 +193,8 @@
     "src/random-npc.js",
     "src/npc-api-bridge.js",
     "src/gps-system.js",
-    "src/radar-compass-system.js"
+    "src/radar-compass-system.js",
+    "src/engine-9-runtime.js"
   ],
   "futureUpdateProtocol": [
     "Fetch engine-manifest.json first.",
@@ -211,6 +202,7 @@
     "Do not re-add disabledRuntimeFiles unless explicitly migrating their logic into an active owner.",
     "For a new feature, pick one active owner file or create one new owner file and list it in this manifest.",
     "Never replace index.html from an older snapshot.",
-    "When updating index.html, preserve the latest script list unless intentionally changing runtime ownership."
+    "When updating index.html, preserve the latest script list unless intentionally changing runtime ownership.",
+    "If a previous feature appears missing, restore it by merging logic into its owner, not by reloading the old patch file."
   ]
 }
