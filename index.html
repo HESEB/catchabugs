@@ -35,13 +35,19 @@
       </div>
       <div id="radarHint" class="radar-hint">신호 탐색중</div>
     </div>
-    <div class="bottom">
-      <button id="openDex" class="mini">도감</button>
-      <button id="openQuest" class="mini">퀘스트</button>
-      <button id="openAchievement" class="mini">업적</button>
-      <button id="openSave" class="mini">저장</button>
-      <button id="diary" class="mini">일기</button>
-      <button id="home" class="mini">BUG HOLE</button>
+    <div id="legacyControls" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;pointer-events:none" aria-hidden="true">
+      <button id="openDex" class="mini" tabindex="-1">도감</button>
+      <button id="openQuest" class="mini" tabindex="-1">퀘스트</button>
+      <button id="openAchievement" class="mini" tabindex="-1">업적</button>
+      <button id="openSave" class="mini" tabindex="-1">저장</button>
+      <button id="diary" class="mini" tabindex="-1">일기</button>
+      <button id="home" class="mini" tabindex="-1">BUG HOLE</button>
+    </div>
+    <div class="bottom menuHub">
+      <button id="menuHub-note" class="mini menuHubBtn"><b>📖</b><span>연구노트</span></button>
+      <button id="menuHub-quest" class="mini menuHubBtn"><b>📜</b><span>퀘스트</span></button>
+      <button id="menuHub-return" class="mini menuHubBtn"><b>🌀</b><span>BUG HOLE</span></button>
+      <button id="menuHub-settings" class="mini menuHubBtn"><b>⚙️</b><span>설정</span></button>
     </div>
     <div id="toast" class="toast"></div>
   </div>
